@@ -27,12 +27,12 @@ def get_player(phone_number: str, db: Session = Depends(get_db)):
 def create_player(payload: schemas.PlayerCreate, db: Session = Depends(get_db)):
     existsing_player= db.query(models.Player).filter(models.Player.phone_number==payload.phone_number).first()
     if existsing_player:
-        raise HTTPException(status:status_code=400 , detail="This phone number already exists in the Player database")
+        raise HTTPException(status_code=400 , detail="This phone number already exists in the Player database")
     player=models.Player(
         full_name=payload.full_name,
         phone_number=payload.phone_number
     )
-    db.add(Player)
+    db.add(player)
     db.commit()
     db.refresh(player)
     return player

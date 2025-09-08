@@ -27,7 +27,7 @@ class PlayerCreate(BaseModel):
 class PlayerOut(BaseModel):
     id: UUID
     full_name: str
-    phone_number: Optional[str] = None
+    phone_number: str
     created_at: datetime
 
     model_config = {"from_attributes": True}  # pydantic v2
@@ -37,3 +37,19 @@ class BulkImportResult(BaseModel):
     created: int
     skipped: int
     errors: List[str] = []
+
+class RegistrationCreate(BaseModel):
+    player_id: Optional[UUID] = None
+    phone_number: Optional[str] = None
+    seed: Optional[int] = None
+
+
+class RegistrationOut(BaseModel):
+    id: UUID
+    event_id: UUID
+    player_id: UUID
+    seed: Optional[int] = None
+    created_at: datetime
+    player: PlayerOut
+    model_config = {"from_attributes": True}  
+    
