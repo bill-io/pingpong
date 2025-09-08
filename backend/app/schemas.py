@@ -1,6 +1,6 @@
 # backend/app/schemas.py
 from datetime import datetime
-from typing import Optional
+from typing import Optional,List
 from uuid import UUID
 from pydantic import BaseModel, Field
 
@@ -19,3 +19,21 @@ class EventOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}  # pydantic v2
+
+class PlayerCreate(BaseModel):
+    full_name: str
+    phone_number:str
+
+class PlayerOut(BaseModel):
+    id: UUID
+    full_name: str
+    phone_number: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}  # pydantic v2
+
+class BulkImportResult(BaseModel):
+    total_rows: int
+    created: int
+    skipped: int
+    errors: List[str] = []
