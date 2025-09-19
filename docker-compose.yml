@@ -15,7 +15,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+    networks:
+      - pingpong_net
+      
+    
+   
+  
   api:
     build:
       context: ./backend
@@ -31,6 +36,43 @@ services:
       db:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload
+    networks:
+      pingpong_net:
+        aliases:
+          - api            # make sure "api" resolves
+          - pingpong_api   # also allow "pingpong_api" to resolve
+    
+    
+    
+    
+  pingpong_frontend_dev:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -lc "if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run dev"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    networks:
+      - pingpong_net
+
+  # --- PROD: built static assets served by Nginx ---
+  
+  pingpong_frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"        # visit http://localhost:8080
+    depends_on:
+      - api
+    networks:
+      - pingpong_net
 
 volumes:
   pg_data:
+
+networks:
+  pingpong_net:
+    driver: bridge

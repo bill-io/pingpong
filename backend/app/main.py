@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from .config import settings
 from .db import Base, engine
-from .routers import events
+from .routers import events , players , registrations , tables,assignments
 
 os.environ["TZ"] = settings.TZ
 
@@ -22,5 +22,13 @@ def healthz():
 def root():
     return {"message": "Backend is alive. Go to /docs or /healthz"}
 
+
+
+
+
 # Routers
 app.include_router(events.router)
+app.include_router(players.router)
+app.include_router(registrations.router)
+app.include_router(tables.router)
+app.include_router(assignments.router)
