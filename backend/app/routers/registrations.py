@@ -49,8 +49,8 @@ def add_registration(
     player = None
     if payload.player_id:
         player = db.query(models.Player).filter(models.Player.id == payload.player_id).first()
-    elif payload.phone_e164:
-        player = db.query(models.Player).filter(models.Player.phone_e164 == payload.phone_e164).first()
+    elif payload.phone_number:
+        player = db.query(models.Player).filter(models.Player.phone_number == payload.phone_number).first()
 
     if not player:
         raise HTTPException(status_code=404, detail="Player not found (use player_id or phone_number)")

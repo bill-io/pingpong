@@ -1,6 +1,6 @@
 # backend/app/schemas.py
 from datetime import datetime
-from typing import Optional,List
+from typing import Optional,List,Literal
 from uuid import UUID
 from pydantic import BaseModel, Field
 
@@ -32,6 +32,23 @@ class PlayerOut(BaseModel):
 
     model_config = {"from_attributes": True}  # pydantic v2
 
+# ---- Slim player (for board) ----
+class PlayerSlim(BaseModel):
+    id: int
+    full_name: str
+    phone_number: str
+    model_config = {"from_attributes": True}
+
+
+class PlayerStateOut(BaseModel):
+    player: PlayerSlim
+    state: Literal["free", "playing"]
+    assignment_id: Optional[int] = None
+    table_id: Optional[int] = None
+    table_position: Optional[str] = None
+    opponent: Optional[PlayerSlim] = None
+    model_config = {"from_attributes": True}
+
 class BulkImportResult(BaseModel):
     total_rows: int
     created: int
@@ -52,12 +69,6 @@ class RegistrationOut(BaseModel):
     model_config = {"from_attributes": True}  
 
 
-# ---- Slim player (for board) ----
-class PlayerSlim(BaseModel):
-    id: int
-    full_name: str
-    phone_e164: str
-    model_config = {"from_attributes": True}
 
 # ---- Table (include current assignment id) ----
 class TableSeed(BaseModel):

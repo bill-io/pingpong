@@ -20,7 +20,7 @@ def _get_player_by_id_or_phone(db: Session, pid: Optional[int], phone: Optional[
         p = db.query(models.Player).filter(models.Player.id == pid).first()
         if p: return p
     if phone:
-        p = db.query(models.Player).filter(models.Player.phone_e164 == phone).first()
+        p = db.query(models.Player).filter(models.Player.phone_number == phone).first()
         if p: return p
     raise HTTPException(status_code=404, detail="Player not found")
 
@@ -32,9 +32,9 @@ def _ensure_registered(db: Session, event_id: int, player_id: int):
     if not reg:
         raise HTTPException(status_code=400, detail=f"Player {player_id} not registered for this event")
 
-def _notify_stub(table_label: str, p1: models.Player, p2: models.Player):
+def _notify_stub(table_name: str, p1: models.Player, p2: models.Player):
     # Replace with Viber/SMS later
-    print(f"[NOTIFY] Table {table_label}: {p1.full_name} ({p1.phone_e164}) vs {p2.full_name} ({p2.phone_e164})")
+    print(f"[NOTIFY] Table {table_name}: {p1.full_name} ({p1.phone_number}) vs {p2.full_name} ({p2.phone_number})")
 
 @router.post("/tables/{table_id}/assign", response_model=schemas.AssignmentOut)
 def assign_to_table(
@@ -51,7 +51,7 @@ def assign_to_table(
     if not t:
         raise HTTPException(status_code=404, detail="Table not found for this event")
     if t.status != "free":
-        raise HTTPException(status_code=409, detail=f"Table '{t.label}' is not free")
+        raise HTTPException(status_code=409, detail=f"Table '{t.position}' is not free")
 
     p1 = _get_player_by_id_or_phone(db, payload.player1_id, payload.player1_phone)
     p2 = _get_player_by_id_or_phone(db, payload.player2_id, payload.player2_phone)
@@ -85,7 +85,7 @@ def assign_to_table(
     t.current_assignment_id = a.id
 
     if payload.notify:
-        _notify_stub(t.label, p1, p2)
+        _notify_stub(t.position, p1, p2)
         a.notified_at = datetime.now(timezone.utc)
 
     db.commit()

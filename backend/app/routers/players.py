@@ -1,11 +1,12 @@
-from typing import List
+from typing import List, Optional
 import csv, io 
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException,Path
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from .. import models, schemas
+from sqlalchemy import or_, and_
 
 
 router = APIRouter(prefix="/players", tags=["players"]) #endpoint /players
@@ -132,3 +133,84 @@ def delete_all_players(db: Session = Depends(get_db)):
     db.query(models.Player).delete(synchronize_session=False)
     db.commit()
     return
+
+
+#------------Get Player State----------------  
+@router.get("/state/{event_id}/{player_id}", response_model=schemas.PlayerStateOut)
+def player_state_by_id(
+    event_id: int = Path(...),
+    player_id: int = Path(...),
+    db: Session = Depends(get_db),
+):
+    _get_event_or_404(db, event_id)
+    p = db.query(models.Player).filter(models.Player.id == player_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return _player_state_payload(db, event_id, p)
+
+@router.get("/state/by-phone/{event_id}/{phone_number}", response_model=schemas.PlayerStateOut)
+def player_state_by_phone(
+    event_id: int = Path(...),
+    phone_number: str = Path(...),
+    db: Session = Depends(get_db),
+):
+    _get_event_or_404(db, event_id)
+    p = db.query(models.Player).filter(models.Player.phone_number == phone_number).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return _player_state_payload(db, event_id, p)
+
+
+
+
+
+#------------Helper Functions----------------
+def _get_event_or_404(db: Session, event_id: int) -> models.Event:
+    ev = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return ev
+
+def _player_state_payload(
+    db: Session, event_id: int, player: models.Player
+) -> schemas.PlayerStateOut:
+    # Find an ACTIVE assignment involving this player in this event
+    a = (
+        db.query(models.Assignment)
+        .filter(
+            models.Assignment.event_id == event_id,
+            models.Assignment.status == "active",
+            or_(
+                models.Assignment.player1_id == player.id,
+                models.Assignment.player2_id == player.id,
+            ),
+        )
+        .first()
+    )
+    if not a:
+        return schemas.PlayerStateOut(
+            player=player,
+            state="free",
+            assignment_id=None,
+            table_id=None,
+            table_position=None,
+            opponent=None,
+        )
+
+    # Get table label if available
+    table = None
+    if a.table_id:
+        table = db.query(models.Table).filter(models.Table.id == a.table_id).first()
+
+    # Determine opponent
+    opponent_id = a.player2_id if a.player1_id == player.id else a.player1_id
+    opponent = db.query(models.Player).filter(models.Player.id == opponent_id).first()
+
+    return schemas.PlayerStateOut(
+        player=player,
+        state="playing",
+        assignment_id=a.id,
+        table_id=a.table_id,
+        table_position=table.position if table else None,
+        opponent=opponent,
+    )
