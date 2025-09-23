@@ -10,4 +10,6 @@ class Settings(BaseSettings):
     TZ: str = "Europe/Athens"
     PORT: int = 8000
 
+    FRONTEND_ORIGINS: str = "http://localhost:5173"  # comma-separated if multiple
+
 settings = Settings()

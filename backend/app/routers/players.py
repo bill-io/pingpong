@@ -12,6 +12,7 @@ from sqlalchemy import or_, and_
 router = APIRouter(prefix="/players", tags=["players"]) #endpoint /players
 MAX_BULK_IMPORT_ROWS = 200 # to prevent abuse
 
+
 @router.get("", response_model=List[schemas.PlayerOut])
 def list_players(db: Session = Depends(get_db)):
     return db.query(models.Player).order_by(models.Player.created_at.desc()).all() #list all players ordered by created_at desc
