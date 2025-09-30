@@ -9,6 +9,7 @@ export default function PlayerList() {
   if (isLoading) return <div className="p-3 text-sm opacity-70">Loading players…</div>;
   if (error) return <div className="p-3 text-sm text-red-600">Failed to load players</div>;
 
+  const players = [...(data ?? [])].sort((a, b) => a.full_name.localeCompare(b.full_name));
   const isSelected = (p: Player) => selected.some((s) => s.id === p.id);
 
   return (
@@ -19,7 +20,7 @@ export default function PlayerList() {
       </div>
       <div className="rounded-xl border">
         <ul className="divide-y">
-          {data?.map((p) => (
+          {players.map((p) => (
             <li
               key={p.id}
               className={`px-3 py-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${
@@ -28,7 +29,16 @@ export default function PlayerList() {
               onClick={() => toggle(p)}
             >
               <span className="truncate">{p.full_name}</span>
-              {isSelected(p) && <span className="text-xs rounded-full px-2 py-0.5 border">Selected</span>}
+              <span className="flex items-center gap-2">
+                {p.is_playing && (
+                  <span className="text-xs rounded-full bg-amber-100 text-amber-700 px-2 py-0.5">
+                    Playing
+                  </span>
+                )}
+                {isSelected(p) && (
+                  <span className="text-xs rounded-full px-2 py-0.5 border">Selected</span>
+                )}
+              </span>
             </li>
           ))}
         </ul>

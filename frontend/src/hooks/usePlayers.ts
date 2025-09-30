@@ -2,8 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { Player } from "@/types";
 
-
-
 function normalizePlayer(p: any): Player {
   const state = (p.state ?? p.status ?? "").toString().toLowerCase();
   return {
@@ -15,7 +13,7 @@ function normalizePlayer(p: any): Player {
       typeof p.is_playing === "boolean"
         ? p.is_playing
         : state
-        ? state === "playing" || state === "free" 
+        ? state === "playing"
         : undefined
   };
 }
@@ -23,7 +21,10 @@ function normalizePlayer(p: any): Player {
 export function usePlayers() {
   return useQuery({
     queryKey: ["players"],
-    queryFn: () => api.get<Player[]>("/players"),
+    queryFn: async () => {
+      const res = await api.get<unknown[]>("/players");
+      return res.map((p) => normalizePlayer(p)) as Player[];
+    },
     refetchInterval: 5000
   });
 }

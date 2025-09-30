@@ -1,51 +1,85 @@
+import { useState } from "react";
 import { useAssignPlayers, useFreeTable } from "@/hooks/useTables";
+import { useEventStore } from "@/store/eventStore";
 import { useSelection } from "@/store/selectionStore";
 import type { TableEntity } from "@/types";
 
 export default function TableCard({ table }: { table: TableEntity }) {
+  const eventId = useEventStore((s) => s.activeEvent?.id);
   const { selected, clear } = useSelection();
-  const assign = useAssignPlayers();
-  const free = useFreeTable();
+  const assign = useAssignPlayers(eventId);
+  const free = useFreeTable(eventId);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const busy = assign.isPending || free.isPending;
-  const canAssign = selected.length > 0 && selected.length <= 2;
+  const players = [table.player1, table.player2].filter(
+    (p): p is NonNullable<TableEntity["player1"]> => Boolean(p)
+  );
+  const status = (table.status ?? "").toString().toLowerCase();
+  const isFree = status === "free";
+  const canAssign = selected.length === 2 && isFree && Boolean(eventId);
+  const canFree = !isFree && Boolean(eventId);
+
+  const assignTooltip = !eventId
+    ? "Select an event first"
+    : selected.length !== 2
+    ? "Select exactly two players"
+    : !isFree
+    ? "Table is already occupied"
+    : "";
+
+  const freeTooltip = !eventId
+    ? "Select an event first"
+    : isFree
+    ? "Table is already free"
+    : "";
+
+  const label = table.label ?? (table.position != null ? `Table ${table.position}` : `Table ${table.id}`);
 
   const onAssign = async () => {
+    if (!canAssign) return;
+    setErrorMessage(null);
     try {
-      await assign.mutateAsync({ tableId: table.id, playerIds: selected.map((p) => p.id) });
+      await assign.mutateAsync({
+        tableId: table.id,
+        players: [selected[0].id, selected[1].id],
+      });
       clear();
     } catch (e) {
-      // minimal error handling for MVP
-      alert("Failed to assign players");
+      const message = e instanceof Error ? e.message : "Failed to assign players";
+      setErrorMessage(message);
     }
   };
 
   const onFree = async () => {
+    if (!canFree) return;
+    setErrorMessage(null);
     try {
       await free.mutateAsync({ tableId: table.id });
-    } catch {
-      alert("Failed to free table");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to free table";
+      setErrorMessage(message);
     }
   };
 
   return (
     <div className="rounded-2xl border p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">{table.name}</h3>
+        <h3 className="font-semibold">{label}</h3>
         <span
           className={`text-xs px-2 py-0.5 rounded-full ${
-            table.is_free ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+            isFree ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
           }`}
         >
-          {table.is_free ? "Free" : "Busy"}
+          {isFree ? "Free" : "Occupied"}
         </span>
       </div>
 
-      <div className="text-sm">
+      <div className="text-sm space-y-1">
         <div className="opacity-70">Players:</div>
-        {table.players?.length ? (
+        {players.length ? (
           <ul className="list-disc list-inside">
-            {table.players.map((p) => (
+            {players.map((p) => (
               <li key={p.id}>{p.full_name}</li>
             ))}
           </ul>
@@ -54,6 +88,8 @@ export default function TableCard({ table }: { table: TableEntity }) {
         )}
       </div>
 
+      {errorMessage && <div className="text-xs text-red-600">{errorMessage}</div>}
+
       <div className="mt-auto flex gap-2">
         <button
           disabled={!canAssign || busy}
@@ -61,14 +97,17 @@ export default function TableCard({ table }: { table: TableEntity }) {
           className={`px-3 py-1.5 rounded-xl border text-sm ${
             canAssign && !busy ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"
           }`}
-          title={canAssign ? "" : "Select up to 2 players first"}
+          title={assignTooltip}
         >
           Assign
         </button>
         <button
-          disabled={busy}
+          disabled={!canFree || busy}
           onClick={onFree}
-          className={`px-3 py-1.5 rounded-xl border text-sm hover:bg-gray-50`}
+          className={`px-3 py-1.5 rounded-xl border text-sm ${
+            canFree && !busy ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"
+          }`}
+          title={freeTooltip}
         >
           Free
         </button>
