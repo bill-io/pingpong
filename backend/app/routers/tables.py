@@ -158,7 +158,7 @@ def board(event_id: int = Path(...), db: Session = Depends(get_db)):
                 p1, p2 = a.player1, a.player2
         rows.append(
             schemas.TableBoardRow(
-                id=t.id, label=t.label, status=t.status,
+                id=t.id, position=t.position, status=t.status,
                 player1=p1, player2=p2
             )
         )
@@ -197,3 +197,4 @@ def delete_all_tables(event_id: int = Path(...), db: Session = Depends(get_db)):
     db.query(models.Table).filter(models.Table.event_id == event_id).delete(synchronize_session=False)
     db.commit()
     return
+

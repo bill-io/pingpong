@@ -121,7 +121,7 @@ class SwapTables(BaseModel):
 # ---- Optional: board view row ----
 class TableBoardRow(BaseModel):
     id: int
-    label: str
+    position: int
     status: str
     player1: Optional[PlayerSlim] = None
     player2: Optional[PlayerSlim] = None
