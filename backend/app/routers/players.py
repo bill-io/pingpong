@@ -119,14 +119,28 @@ def update_player(phone_number: str, payload: schemas.PlayerCreate, db: Session 
     return player
 
 #------------DELETE PLAYER/S----------------
+@router.delete("/id/{player_id}", status_code=204)
+def delete_player_by_id(player_id: int, db: Session = Depends(get_db)):
+    player = db.query(models.Player).filter(models.Player.id == player_id).first()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    db.delete(player)
+    db.commit()
+    return None
+
+
 @router.delete("/{phone_number}", status_code=204)
 def delete_player(phone_number: str, db: Session = Depends(get_db)):
-    player = db.query(models.Player).filter(models.Player.id == player_id).first()
+    player = (
+        db.query(models.Player)
+        .filter(models.Player.phone_number == phone_number)
+        .first()
+    )
     if not player:
         raise HTTPException(status_code=404, detail="Player not found with that number")
     db.delete(player)
     db.commit()
-    return
+    return None
 
 @router.delete("", status_code=204)
 def delete_all_players(db: Session = Depends(get_db)):

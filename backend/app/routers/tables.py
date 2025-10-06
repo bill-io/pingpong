@@ -166,18 +166,23 @@ def board(event_id: int = Path(...), db: Session = Depends(get_db)):
 
 
 #---------DELETE-----------------
-'''@router.delete("/{table_id}", status_code=204)
+@router.delete("/{table_id}", status_code=204)
 def delete_table(event_id: int = Path(...), table_id: int = Path(...), db: Session = Depends(get_db)):
     _event_exists(db, event_id)
-    t = db.query(models.Table).filter(and_(models.Table.id == table_id, models.Table.event_id == event_id)).first()
+    t = (
+        db.query(models.Table)
+        .filter(and_(models.Table.id == table_id, models.Table.event_id == event_id))
+        .first()
+    )
     if not t:
         raise HTTPException(status_code=404, detail="Table not found")
     if t.current_assignment_id:
         raise HTTPException(status_code=400, detail="Cannot delete a table with an active assignment")
     db.delete(t)
     db.commit()
-    return
-'''
+    return None
+
+
 
 @router.delete("/pos/{position}", status_code=204)
 def delete_table_by_position(event_id: int = Path(...), position: int = Path(...), db: Session = Depends(get_db)):

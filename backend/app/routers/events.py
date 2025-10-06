@@ -1,6 +1,6 @@
 # backend/app/routers/events.py
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends , HTTPException , Path
 from sqlalchemy.orm import Session
 from ..db import get_db
 from .. import models, schemas
@@ -23,3 +23,13 @@ def create_event(payload: schemas.EventCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(event)
     return event
+
+@router.delete("/{event_id}", status_code=204)
+def delete_event(event_id: int = Path(...), db: Session = Depends(get_db)):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    db.delete(event)
+    db.commit()
+    return None

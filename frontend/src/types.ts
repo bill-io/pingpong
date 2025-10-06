@@ -29,3 +29,11 @@ export type TableEntity = {
   player1?: PlayerSlim | null;
   player2?: PlayerSlim | null;
 };
+
+export type Registration = {
+  id: number | string;
+  event_id: number | string;
+  player_id: number | string;
+  created_at?: string;
+  player: Player;
+};

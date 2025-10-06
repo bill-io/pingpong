@@ -46,3 +46,29 @@ export function useFreeTable(eventId?: string | number) {
     }
   });
 }
+
+export function useCreateTable(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { position: number }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.post<TableEntity>(`/events/${eventId}/tables/pos/${vars.position}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}
+
+export function useDeleteTable(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { tableId: TableEntity["id"] }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.delete<void>(`/events/${eventId}/tables/${vars.tableId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}

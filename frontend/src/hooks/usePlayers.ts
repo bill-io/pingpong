@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { Player } from "@/types";
 
@@ -26,5 +26,26 @@ export function usePlayers() {
       return res.map((p) => normalizePlayer(p)) as Player[];
     },
     refetchInterval: 5000
+  });
+}
+
+export function useCreatePlayer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { full_name: string; phone_number?: string | null }) =>
+      api.post<Player>("/players", payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["players"] });
+    }
+  });
+}
+
+export function useDeletePlayer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (playerId: Player["id"]) => api.delete<void>(`/players/id/${playerId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["players"] });
+    }
   });
 }

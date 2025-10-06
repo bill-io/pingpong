@@ -5,6 +5,7 @@ import { useTables } from "@/hooks/useTables";
 import TableCard from "@/components/TableCard";
 import { useEventStore } from "@/store/eventStore";
 import { useSelection } from "@/store/selectionStore";
+import AdminActions from "@/components/AdminActions";
 
 export default function MainPage() {
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents();
@@ -67,6 +68,8 @@ export default function MainPage() {
         </div>
       </header>
 
+      <AdminActions tables={tables} />
+      
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <aside className="md:col-span-1">
           <PlayerList />
