@@ -4,8 +4,7 @@ import { useCreateTable, useDeleteTable, useSeedTables } from "@/hooks/useTables
 import { useCreatePlayer, useDeletePlayer, usePlayers } from "@/hooks/usePlayers";
 import { useRegisterPlayer } from "@/hooks/useRegistrations";
 import { useEventStore } from "@/store/eventStore";
-import { useSelection } from "@/store/selectionStore";
-import type { TableEntity } from "@/types";
+import type { Registration, TableEntity } from "@/types";
 
 function useFeedback() {
   const [message, setMessage] = useState<string | null>(null);
@@ -21,9 +20,14 @@ function useFeedback() {
   return { message, variant, show, reset };
 }
 
-export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
+export default function AdminActions({
+  tables,
+  registrations
+}: {
+  tables?: TableEntity[];
+  registrations?: Registration[];
+}) {
   const { activeEvent, setActiveEvent } = useEventStore();
-  const { selected } = useSelection();
   const { data: players = [] } = usePlayers();
 
   const createEvent = useCreateEvent();
@@ -53,6 +57,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
   const [playerPhone, setPlayerPhone] = useState("");
   const [playerToDelete, setPlayerToDelete] = useState("");
   const [playerToRegister, setPlayerToRegister] = useState("");
+  const [bulkSelection, setBulkSelection] = useState<string[]>([]);
 
   useEffect(() => {
     if (!tableToDelete && tables?.length) {
@@ -84,29 +89,55 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
     if (!players.length) return;
     const exists = players.some((p) => p.id.toString() === playerToDelete);
     if (!exists) {
-      setPlayerToDelete(players[0].id.toString());
+      setPlayerToDelete(players[0]?.id.toString() ?? "");
     }
   }, [players, playerToDelete]);
 
-  useEffect(() => {
-    if (!playerToRegister && players.length) {
-      setPlayerToRegister(players[0].id.toString());
+  const tableOptions = useMemo(() => tables ?? [], [tables]);
+  const registeredPlayerIds = useMemo(() => {
+    if (!registrations?.length) {
+      return new Set<string>();
     }
-    if (players.length === 0) {
+    return new Set(registrations.map((registration) => registration.player_id.toString()));
+  }, [registrations]);
+  const unregisteredPlayers = useMemo(
+    () => players.filter((player) => !registeredPlayerIds.has(player.id.toString())),
+    [players, registeredPlayerIds]
+  );
+  const isEventSelected = Boolean(activeEvent?.id);
+
+  useEffect(() => {
+    if (!playerToRegister && unregisteredPlayers.length) {
+      setPlayerToRegister(unregisteredPlayers[0].id.toString());
+    }
+    if (unregisteredPlayers.length === 0) {
       setPlayerToRegister("");
     }
-  }, [players, playerToRegister]);
+  }, [playerToRegister, unregisteredPlayers]);
 
   useEffect(() => {
-    if (!players.length) return;
-    const exists = players.some((p) => p.id.toString() === playerToRegister);
+    if (!unregisteredPlayers.length) return;
+    const exists = unregisteredPlayers.some((p) => p.id.toString() === playerToRegister);
     if (!exists) {
-      setPlayerToRegister(players[0].id.toString());
+      setPlayerToRegister(unregisteredPlayers[0]?.id.toString() ?? "");
     }
-  }, [players, playerToRegister]);
+  }, [playerToRegister, unregisteredPlayers]);
 
-  const tableOptions = useMemo(() => tables ?? [], [tables]);
-  const isEventSelected = Boolean(activeEvent?.id);
+  const toggleBulkSelection = (id: string) => {
+    setBulkSelection((prev) => {
+      const exists = prev.includes(id);
+      if (exists) {
+        return prev.filter((value) => value !== id);
+      }
+      return [...prev, id];
+    });
+  };
+
+  useEffect(() => {
+    setBulkSelection((prev) =>
+      prev.filter((id) => unregisteredPlayers.some((player) => player.id.toString() === id))
+    );
+  }, [unregisteredPlayers]);
 
   const handleCreateEvent = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -335,60 +366,65 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
     }
   };
 
-  const handleRegisterSelected = async () => {
+  const handleRegisterBulk = async () => {
     feedback.reset();
     if (!isEventSelected) {
       feedback.show("error", "Select an event to register players.");
       return;
     }
-    if (!selected.length) {
-      feedback.show("error", "Select players from the list first.");
+    if (!bulkSelection.length) {
+      feedback.show("error", "Choose at least one player from the list.");
       return;
     }
 
     try {
-      for (const p of selected) {
-        await registerPlayer.mutateAsync({ playerId: p.id });
+      for (const playerId of bulkSelection) {
+        await registerPlayer.mutateAsync({ playerId });
       }
-      feedback.show("success", `${selected.length} player(s) registered for the event.`);
+      feedback.show("success", `${bulkSelection.length} player(s) registered for the event.`);
+      setBulkSelection([]);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to register selected players";
       feedback.show("error", message);
     }
   };
 
+  const inputClasses =
+    "w-full rounded-xl border border-slate-800/70 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none";
+  const buttonPrimary =
+    "w-full rounded-xl border border-sky-400/40 bg-sky-500/20 px-4 py-2 text-sm font-medium text-sky-100 transition hover:border-sky-300 hover:bg-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60";
+  const buttonGhost =
+    "w-full rounded-xl border border-slate-800/70 bg-slate-950/60 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-sky-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60";
+  const sectionTitle = "text-sm font-semibold uppercase tracking-wide text-slate-400";
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-6 shadow-xl">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Quick actions</h2>
-        <p className="text-xs opacity-70">
-          Use these helpers to manage events, tables and player registrations.
-        </p>
+    <section className="space-y-8 text-slate-200">
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold text-white">Operations console</h2>
+        <p className="text-xs text-slate-400">Manage events, tables, and player registrations without leaving the dashboard.</p>
       </div>
 
       {feedback.message && (
         <div
-          className={`text-sm rounded-md border px-3 py-2 ${
+          className={`rounded-xl border px-3 py-2 text-sm ${
             feedback.variant === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-red-200 bg-red-50 text-red-700"
+              ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-100"
+              : "border-rose-400/40 bg-rose-500/10 text-rose-100"
           }`}
         >
           {feedback.message}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleCreateEvent} className="space-y-2">
-          <h3 className="font-medium">Create event</h3>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleCreateEvent} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Create event</h3>
+            <p className="text-xs text-slate-400">Spin up a fresh competition in seconds.</p>
+          </div>
+          <input className={inputClasses} placeholder="Event name" value={eventName} onChange={(e) => setEventName(e.target.value)} />
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
-            placeholder="Event name"
-            value={eventName}
-            onChange={(e) => setEventName(e.target.value)}
-          />
-          <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Number of tables"
             type="number"
             min={1}
@@ -396,36 +432,33 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
             onChange={(e) => setEventTablesCount(e.target.value)}
           />
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Location (optional)"
             value={eventLocation}
             onChange={(e) => setEventLocation(e.target.value)}
           />
-          <label className="flex items-center gap-2 text-xs">
+          <label className="flex items-center gap-2 text-xs text-slate-400">
             <input
               type="checkbox"
               checked={autoSeed}
               onChange={(e) => setAutoSeed(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-sky-400 focus:ring-sky-400"
             />
             Auto generate tables after creating the event
           </label>
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-slate-900 text-white py-1.5 text-sm"
-            disabled={createEvent.isPending}
-          >
+          <button type="submit" className={buttonPrimary} disabled={createEvent.isPending}>
             {createEvent.isPending ? "Creating…" : "Create event"}
           </button>
         </form>
 
-        <div className="space-y-2">
-          <h3 className="font-medium">Delete active event</h3>
-          <p className="text-xs opacity-70">
-            Removes the current event and everything linked to it.
-          </p>
+        <div className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Delete active event</h3>
+            <p className="text-xs text-slate-400">Removes the current event and everything linked to it.</p>
+          </div>
           <button
             type="button"
-            className="w-full rounded-lg border border-red-300 text-red-700 py-1.5 text-sm hover:bg-red-50"
+            className="w-full rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-300 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handleDeleteEvent}
             disabled={!activeEvent || deleteEvent.isPending}
           >
@@ -434,32 +467,32 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleCreateTable} className="space-y-2">
-          <h3 className="font-medium">Add table</h3>
-          <p className="text-xs opacity-70">Assign a new position number to create a table.</p>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleCreateTable} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Add table</h3>
+            <p className="text-xs text-slate-400">Assign a new position number to create a table.</p>
+          </div>
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Table position"
             value={tablePosition}
             onChange={(e) => setTablePosition(e.target.value)}
             type="number"
             min={1}
           />
-          <button
-            type="submit"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
-            disabled={createTable.isPending}
-          >
+          <button type="submit" className={buttonGhost} disabled={createTable.isPending}>
             {createTable.isPending ? "Adding…" : "Add table"}
           </button>
         </form>
 
-        <form onSubmit={handleDeleteTable} className="space-y-2">
-          <h3 className="font-medium">Delete table</h3>
-          <p className="text-xs opacity-70">Choose a table from the current event.</p>
+        <form onSubmit={handleDeleteTable} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Delete table</h3>
+            <p className="text-xs text-slate-400">Choose a table from the current event.</p>
+          </div>
           <select
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={`${inputClasses} appearance-none`}
             value={tableToDelete}
             onChange={(e) => setTableToDelete(e.target.value)}
           >
@@ -474,7 +507,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
           </select>
           <button
             type="submit"
-            className="w-full rounded-lg border border-red-300 text-red-700 py-1.5 text-sm hover:bg-red-50"
+            className="w-full rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-300 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={deleteTable.isPending || !tableOptions.length}
           >
             {deleteTable.isPending ? "Deleting…" : "Delete table"}
@@ -484,17 +517,22 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
 
       <form
         onSubmit={handleSeedTables}
-        className="space-y-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4"
+        className="space-y-4 rounded-2xl border border-dashed border-slate-700/70 bg-slate-950/40 p-5"
       >
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="font-medium">Auto-generate tables</h3>
-          <span className="text-xs text-slate-500">Use the event defaults or override below.</span>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className={sectionTitle}>Auto-generate tables</h3>
+            <p className="text-xs text-slate-400">Use the event defaults or override below.</p>
+          </div>
+          <span className="rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-100">
+            Quick fill helper
+          </span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1">
-            <label className="text-xs text-slate-500">How many</label>
+            <label className="text-xs text-slate-400">How many</label>
             <input
-              className="w-full rounded-lg border px-3 py-1.5 text-sm"
+              className={inputClasses}
               placeholder="Event default"
               value={seedCount}
               onChange={(e) => setSeedCount(e.target.value)}
@@ -503,66 +541,62 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-slate-500">Start at position</label>
+            <label className="text-xs text-slate-400">Start at position</label>
             <input
-              className="w-full rounded-lg border px-3 py-1.5 text-sm"
+              className={inputClasses}
               value={seedStart}
               onChange={(e) => setSeedStart(e.target.value)}
               type="number"
               min={1}
             />
           </div>
-          <div className="flex items-center gap-2 pt-6">
+          <label className="flex items-center gap-2 pt-6 text-xs text-slate-400">
             <input
               type="checkbox"
-              id="seed-reset"
               checked={seedReset}
               onChange={(e) => setSeedReset(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-sky-400 focus:ring-sky-400"
             />
-            <label htmlFor="seed-reset" className="text-xs text-slate-600">
-              Reset existing tables first
-            </label>
-          </div>
+            Reset existing tables first
+          </label>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm text-white sm:w-auto"
-            disabled={seedTables.isPending}
-          >
+          <button type="submit" className={buttonPrimary} disabled={seedTables.isPending}>
             {seedTables.isPending ? "Generating…" : "Generate tables"}
           </button>
         </div>
       </form>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleCreatePlayer} className="space-y-2">
-          <h3 className="font-medium">Add player</h3>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleCreatePlayer} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Add player</h3>
+            <p className="text-xs text-slate-400">Capture core contact info.</p>
+          </div>
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Full name"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
           />
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Phone number"
             value={playerPhone}
             onChange={(e) => setPlayerPhone(e.target.value)}
           />
-          <button
-            type="submit"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
-            disabled={createPlayer.isPending}
-          >
+          <button type="submit" className={buttonGhost} disabled={createPlayer.isPending}>
             {createPlayer.isPending ? "Adding…" : "Add player"}
           </button>
         </form>
 
-        <form onSubmit={handleDeletePlayer} className="space-y-2">
-          <h3 className="font-medium">Delete player</h3>
+        <form onSubmit={handleDeletePlayer} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Delete player</h3>
+            <p className="text-xs text-slate-400">Remove players who no longer participate.</p>
+          </div>
           <select
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={`${inputClasses} appearance-none`}
             value={playerToDelete}
             onChange={(e) => setPlayerToDelete(e.target.value)}
           >
@@ -577,7 +611,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
           </select>
           <button
             type="submit"
-            className="w-full rounded-lg border border-red-300 text-red-700 py-1.5 text-sm hover:bg-red-50"
+            className="w-full rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-300 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={deletePlayer.isPending || !players.length}
           >
             {deletePlayer.isPending ? "Deleting…" : "Delete player"}
@@ -585,18 +619,22 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
         </form>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleRegisterPlayer} className="space-y-2">
-          <h3 className="font-medium">Register player to event</h3>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleRegisterPlayer} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Register player to event</h3>
+            <p className="text-xs text-slate-400">Move a player from the database onto the roster.</p>
+          </div>
           <select
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={`${inputClasses} appearance-none`}
             value={playerToRegister}
             onChange={(e) => setPlayerToRegister(e.target.value)}
+            disabled={unregisteredPlayers.length === 0}
           >
             <option value="" disabled>
-              {players.length ? "Select a player" : "No players available"}
+              {unregisteredPlayers.length ? "Select a player" : "All eligible players are registered"}
             </option>
-            {players.map((player) => (
+            {unregisteredPlayers.map((player) => (
               <option key={player.id} value={player.id.toString()}>
                 {player.full_name}
               </option>
@@ -604,25 +642,64 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
           </select>
           <button
             type="submit"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
-            disabled={registerPlayer.isPending || !players.length}
+            className={buttonGhost}
+            disabled={registerPlayer.isPending || !unregisteredPlayers.length}
           >
             {registerPlayer.isPending ? "Registering…" : "Register player"}
           </button>
         </form>
 
-        <div className="space-y-2">
-          <h3 className="font-medium">Register selected players</h3>
-          <p className="text-xs opacity-70">
-            Uses the selection from the player list on the left.
-          </p>
+        <div className="space-y-4 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Register multiple players</h3>
+            <p className="text-xs text-slate-400">Select anyone from the database who isn’t already on this roster.</p>
+          </div>
+          <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+            {unregisteredPlayers.length ? (
+              unregisteredPlayers.map((player) => {
+                const id = player.id.toString();
+                const checked = bulkSelection.includes(id);
+                return (
+                  <label
+                    key={player.id}
+                    className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm transition ${
+                      checked
+                        ? "border-sky-400/60 bg-sky-500/15 text-sky-100"
+                        : "border-slate-800/70 bg-slate-950/70 text-slate-200 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium text-white">{player.full_name}</span>
+                      {player.phone_number && (
+                        <span className="text-xs text-slate-400">{player.phone_number}</span>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-sky-400 focus:ring-sky-400"
+                      checked={checked}
+                      onChange={() => toggleBulkSelection(id)}
+                    />
+                  </label>
+                );
+              })
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-700/60 bg-slate-900/50 px-3 py-4 text-center text-xs text-slate-400">
+                Everyone in the database is already registered for this event.
+              </p>
+            )}
+          </div>
           <button
             type="button"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
-            onClick={handleRegisterSelected}
-            disabled={registerPlayer.isPending || selected.length === 0}
+            className={buttonPrimary}
+            onClick={handleRegisterBulk}
+            disabled={registerPlayer.isPending || bulkSelection.length === 0}
           >
-            {registerPlayer.isPending ? "Working…" : "Register selected"}
+            {registerPlayer.isPending
+              ? "Registering…"
+              : bulkSelection.length
+              ? `Register ${bulkSelection.length} player${bulkSelection.length === 1 ? "" : "s"}`
+              : "Select players to register"}
           </button>
         </div>
       </div>

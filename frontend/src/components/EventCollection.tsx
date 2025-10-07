@@ -22,12 +22,12 @@ type Props = {
 export default function EventCollection({ events, isLoading, error, selectedId, onSelect }: Props) {
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 text-slate-200">
         <header className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Events</h2>
-          <span className="text-xs text-slate-500">Loading…</span>
+          <h2 className="text-lg font-semibold text-white">Events</h2>
+          <span className="text-xs text-slate-400">Loading…</span>
         </header>
-        <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+        <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/50 p-4 text-sm text-slate-400">
           Fetching events from the server.
         </div>
       </div>
@@ -37,13 +37,11 @@ export default function EventCollection({ events, isLoading, error, selectedId, 
   if (error) {
     const message = error instanceof Error ? error.message : "Failed to load events";
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 text-slate-200">
         <header className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Events</h2>
+          <h2 className="text-lg font-semibold text-white">Events</h2>
         </header>
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {message}
-        </div>
+        <div className="rounded-2xl border border-rose-400/40 bg-rose-500/10 p-4 text-sm text-rose-200">{message}</div>
       </div>
     );
   }
@@ -51,17 +49,17 @@ export default function EventCollection({ events, isLoading, error, selectedId, 
   const items = events ?? [];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 text-slate-200">
       <header className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Events</h2>
-          <p className="text-xs text-slate-500">Select an event to manage its tables and roster.</p>
+          <h2 className="text-lg font-semibold text-white">Events</h2>
+          <p className="text-xs text-slate-400">Select an event to manage its tables and roster.</p>
         </div>
-        <span className="text-xs font-medium text-slate-500">{items.length} total</span>
+        <span className="text-xs font-medium text-slate-400">{items.length} total</span>
       </header>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+        <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
           No events yet. Use the form on the right to create your first event.
         </div>
       ) : (
@@ -74,23 +72,27 @@ export default function EventCollection({ events, isLoading, error, selectedId, 
                 <button
                   type="button"
                   onClick={() => onSelect(event)}
-                  className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${
+                  className={`group w-full rounded-2xl border px-4 py-4 text-left transition focus:outline-none focus:ring-2 focus:ring-sky-400/60 focus:ring-offset-0 ${
                     isActive
-                      ? "border-slate-900 bg-slate-900 text-white shadow-lg"
-                      : "border-slate-200 bg-slate-50 text-slate-900"
+                      ? "border-sky-400/50 bg-sky-500/20 text-white shadow-[0_20px_45px_-25px_rgba(56,189,248,0.7)]"
+                      : "border-slate-800/70 bg-slate-950/70 text-slate-100 hover:border-sky-400/40 hover:bg-slate-900/70"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-base font-semibold">{event.name}</h3>
-                      {meta && <p className={`text-xs ${isActive ? "text-slate-200" : "text-slate-500"}`}>{meta}</p>}
+                      {meta && (
+                        <p className={`text-xs ${isActive ? "text-sky-100/90" : "text-slate-400"}`}>{meta}</p>
+                      )}
                     </div>
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${
-                        isActive ? "bg-white/20 text-white" : "bg-white text-slate-700"
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        isActive
+                          ? "border-white/30 bg-white/10 text-white"
+                          : "border-sky-400/30 bg-sky-500/10 text-sky-200 group-hover:border-sky-400/50"
                       }`}
                     >
-                      Activate
+                      {isActive ? "Active" : "Activate"}
                     </span>
                   </div>
                 </button>
