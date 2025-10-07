@@ -77,9 +77,11 @@ class Assignment(Base):
     player1_id = Column(Integer, ForeignKey("player.id", ondelete="RESTRICT"), nullable=False)
     player2_id = Column(Integer, ForeignKey("player.id", ondelete="RESTRICT"), nullable=False)
 
-    status = Column(String, nullable=False, default="active")  # active | finished 
+    status = Column(String, nullable=False, default="active")  # active | finished
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     notified_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    ended_at = Column(DateTime(timezone=True), nullable=True)
 
     event = relationship("Event")
     table = relationship("Table", foreign_keys=[table_id])

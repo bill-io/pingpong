@@ -107,6 +107,8 @@ class AssignmentOut(BaseModel):
     status: str
     created_at: datetime
     notified_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
     player1: PlayerSlim
     player2: PlayerSlim
     model_config = {"from_attributes": True}
@@ -123,5 +125,12 @@ class TableBoardRow(BaseModel):
     id: int
     position: int
     status: str
+    label: Optional[str] = None
+    current_assignment_id: Optional[int] = None
+    assignment_status: Optional[str] = None
+    assignment_created_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    notified_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
     player1: Optional[PlayerSlim] = None
     player2: Optional[PlayerSlim] = None

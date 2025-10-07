@@ -152,14 +152,31 @@ def board(event_id: int = Path(...), db: Session = Depends(get_db)):
     tables = db.query(models.Table).filter(models.Table.event_id == event_id).order_by(models.Table.id).all()
     for t in tables:
         p1 = p2 = None
+        assignment_status = None
+        started_at = notified_at = ended_at = created_at = None
         if t.current_assignment_id:
             a = db.query(models.Assignment).filter(models.Assignment.id == t.current_assignment_id).first()
             if a and a.status == "active":
                 p1, p2 = a.player1, a.player2
+                assignment_status = a.status
+                started_at = a.started_at
+                notified_at = a.notified_at
+                ended_at = a.ended_at
+                created_at = a.created_at
         rows.append(
             schemas.TableBoardRow(
-                id=t.id, position=t.position, status=t.status,
-                player1=p1, player2=p2
+                id=t.id,
+                position=t.position,
+                status=t.status,
+                label=f"Table {t.position}" if t.position is not None else f"Table {t.id}",
+                current_assignment_id=t.current_assignment_id,
+                assignment_status=assignment_status,
+                assignment_created_at=created_at,
+                started_at=started_at,
+                notified_at=notified_at,
+                ended_at=ended_at,
+                player1=p1,
+                player2=p2,
             )
         )
     return rows

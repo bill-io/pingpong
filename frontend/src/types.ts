@@ -26,6 +26,11 @@ export type TableEntity = {
   position?: number | null;
   label?: string | null;
   current_assignment_id?: number | null;
+  assignment_status?: string | null;
+  assignment_created_at?: string | null;
+  started_at?: string | null;
+  notified_at?: string | null;
+  ended_at?: string | null;
   player1?: PlayerSlim | null;
   player2?: PlayerSlim | null;
 };

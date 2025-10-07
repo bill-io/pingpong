@@ -17,6 +17,7 @@ export default function MainPage() {
   const { clear } = useSelection();
   const playersQuery = usePlayers();
   const [activeView, setActiveView] = useState<"dashboard" | "event">("dashboard");
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     if (!activeEvent && events?.length) {
@@ -34,6 +35,11 @@ export default function MainPage() {
     }
   }, [activeEvent]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const { data: tables, isLoading: tablesLoading, error: tablesError } = useTables(activeEvent?.id);
   const registrationsQuery = useRegistrations(activeEvent?.id);
 
@@ -44,6 +50,26 @@ export default function MainPage() {
   const occupiedTables = tables?.filter((table) => (table.status ?? "").toLowerCase() !== "free").length ?? 0;
   const freeTables = Math.max(totalTables - occupiedTables, 0);
   const rosterCount = registrationsQuery.data?.length ?? 0;
+  const activeTimers = useMemo(
+    () =>
+      (tables ?? []).filter(
+        (table) => table.assignment_status === "active" && Boolean(table.started_at)
+      ),
+    [tables]
+  );
+  const longestTimerMs = activeTimers.reduce((max, table) => {
+    if (!table.started_at) return max;
+    const started = Date.parse(table.started_at);
+    if (Number.isNaN(started)) return max;
+    return Math.max(max, now - started);
+  }, 0);
+  const longestTimerFormatted =
+    longestTimerMs > 0 ? formatDuration(longestTimerMs) : "00:00";
+  const currentTime = new Date(now).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
 
   const stats = [
     {
@@ -74,6 +100,17 @@ export default function MainPage() {
           ? "All tables are free right now."
           : `${occupiedTables} table${occupiedTables === 1 ? "" : "s"} currently occupied.`
         : "Create or select an event to manage tables."
+    },
+    {
+      label: "Active timers",
+      value: activeEvent
+        ? `${activeTimers.length}`
+        : "—",
+      description: activeEvent
+        ? activeTimers.length
+          ? `Longest match running ${longestTimerFormatted}.`
+          : "No active match timers at the moment."
+        : "Select an event to monitor timers."
     }
   ];
 
@@ -121,6 +158,7 @@ export default function MainPage() {
             <p className="max-w-2xl text-sm text-slate-300">
               Coordinate tournaments, register players, and control tables from a single modern interface.
             </p>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Local time • {currentTime}</p>
           </div>
 
           <div className="w-full max-w-sm rounded-3xl border border-sky-400/20 bg-slate-900/70 p-5 shadow-[0_20px_60px_-35px_rgba(56,189,248,0.75)] backdrop-blur">
@@ -307,4 +345,13 @@ export default function MainPage() {
       </div>
     </div>
   );
+}
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
