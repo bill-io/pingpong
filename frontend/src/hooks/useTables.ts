@@ -47,6 +47,32 @@ export function useFreeTable(eventId?: string | number) {
   });
 }
 
+export function useNotifyAssignment(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { assignmentId: number | string }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.post(`/events/${eventId}/assignments/${vars.assignmentId}/notify`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}
+
+export function useStartTimer(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { assignmentId: number | string }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.post(`/events/${eventId}/assignments/${vars.assignmentId}/start`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}
+
 export function useCreateTable(eventId?: string | number) {
   const qc = useQueryClient();
   return useMutation({
