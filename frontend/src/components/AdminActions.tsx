@@ -84,7 +84,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
     if (!players.length) return;
     const exists = players.some((p) => p.id.toString() === playerToDelete);
     if (!exists) {
-      setPlayerToDelete(players[0].id.toString());
+      setPlayerToDelete(players[0]?.id.toString() ?? "");
     }
   }, [players, playerToDelete]);
 
@@ -101,7 +101,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
     if (!players.length) return;
     const exists = players.some((p) => p.id.toString() === playerToRegister);
     if (!exists) {
-      setPlayerToRegister(players[0].id.toString());
+      setPlayerToRegister(players[0]?.id.toString() ?? "");
     }
   }, [players, playerToRegister]);
 
@@ -357,38 +357,42 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
     }
   };
 
+  const inputClasses =
+    "w-full rounded-xl border border-slate-800/70 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none";
+  const buttonPrimary =
+    "w-full rounded-xl border border-sky-400/40 bg-sky-500/20 px-4 py-2 text-sm font-medium text-sky-100 transition hover:border-sky-300 hover:bg-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60";
+  const buttonGhost =
+    "w-full rounded-xl border border-slate-800/70 bg-slate-950/60 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-sky-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60";
+  const sectionTitle = "text-sm font-semibold uppercase tracking-wide text-slate-400";
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-6 shadow-xl">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Quick actions</h2>
-        <p className="text-xs opacity-70">
-          Use these helpers to manage events, tables and player registrations.
-        </p>
+    <section className="space-y-8 text-slate-200">
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold text-white">Operations console</h2>
+        <p className="text-xs text-slate-400">Manage events, tables, and player registrations without leaving the dashboard.</p>
       </div>
 
       {feedback.message && (
         <div
-          className={`text-sm rounded-md border px-3 py-2 ${
+          className={`rounded-xl border px-3 py-2 text-sm ${
             feedback.variant === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-red-200 bg-red-50 text-red-700"
+              ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-100"
+              : "border-rose-400/40 bg-rose-500/10 text-rose-100"
           }`}
         >
           {feedback.message}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleCreateEvent} className="space-y-2">
-          <h3 className="font-medium">Create event</h3>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleCreateEvent} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Create event</h3>
+            <p className="text-xs text-slate-400">Spin up a fresh competition in seconds.</p>
+          </div>
+          <input className={inputClasses} placeholder="Event name" value={eventName} onChange={(e) => setEventName(e.target.value)} />
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
-            placeholder="Event name"
-            value={eventName}
-            onChange={(e) => setEventName(e.target.value)}
-          />
-          <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Number of tables"
             type="number"
             min={1}
@@ -396,36 +400,33 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
             onChange={(e) => setEventTablesCount(e.target.value)}
           />
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Location (optional)"
             value={eventLocation}
             onChange={(e) => setEventLocation(e.target.value)}
           />
-          <label className="flex items-center gap-2 text-xs">
+          <label className="flex items-center gap-2 text-xs text-slate-400">
             <input
               type="checkbox"
               checked={autoSeed}
               onChange={(e) => setAutoSeed(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-sky-400 focus:ring-sky-400"
             />
             Auto generate tables after creating the event
           </label>
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-slate-900 text-white py-1.5 text-sm"
-            disabled={createEvent.isPending}
-          >
+          <button type="submit" className={buttonPrimary} disabled={createEvent.isPending}>
             {createEvent.isPending ? "Creating…" : "Create event"}
           </button>
         </form>
 
-        <div className="space-y-2">
-          <h3 className="font-medium">Delete active event</h3>
-          <p className="text-xs opacity-70">
-            Removes the current event and everything linked to it.
-          </p>
+        <div className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Delete active event</h3>
+            <p className="text-xs text-slate-400">Removes the current event and everything linked to it.</p>
+          </div>
           <button
             type="button"
-            className="w-full rounded-lg border border-red-300 text-red-700 py-1.5 text-sm hover:bg-red-50"
+            className="w-full rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-300 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handleDeleteEvent}
             disabled={!activeEvent || deleteEvent.isPending}
           >
@@ -434,32 +435,32 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleCreateTable} className="space-y-2">
-          <h3 className="font-medium">Add table</h3>
-          <p className="text-xs opacity-70">Assign a new position number to create a table.</p>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleCreateTable} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Add table</h3>
+            <p className="text-xs text-slate-400">Assign a new position number to create a table.</p>
+          </div>
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Table position"
             value={tablePosition}
             onChange={(e) => setTablePosition(e.target.value)}
             type="number"
             min={1}
           />
-          <button
-            type="submit"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
-            disabled={createTable.isPending}
-          >
+          <button type="submit" className={buttonGhost} disabled={createTable.isPending}>
             {createTable.isPending ? "Adding…" : "Add table"}
           </button>
         </form>
 
-        <form onSubmit={handleDeleteTable} className="space-y-2">
-          <h3 className="font-medium">Delete table</h3>
-          <p className="text-xs opacity-70">Choose a table from the current event.</p>
+        <form onSubmit={handleDeleteTable} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Delete table</h3>
+            <p className="text-xs text-slate-400">Choose a table from the current event.</p>
+          </div>
           <select
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={`${inputClasses} appearance-none`}
             value={tableToDelete}
             onChange={(e) => setTableToDelete(e.target.value)}
           >
@@ -474,7 +475,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
           </select>
           <button
             type="submit"
-            className="w-full rounded-lg border border-red-300 text-red-700 py-1.5 text-sm hover:bg-red-50"
+            className="w-full rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-300 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={deleteTable.isPending || !tableOptions.length}
           >
             {deleteTable.isPending ? "Deleting…" : "Delete table"}
@@ -484,17 +485,22 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
 
       <form
         onSubmit={handleSeedTables}
-        className="space-y-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4"
+        className="space-y-4 rounded-2xl border border-dashed border-slate-700/70 bg-slate-950/40 p-5"
       >
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="font-medium">Auto-generate tables</h3>
-          <span className="text-xs text-slate-500">Use the event defaults or override below.</span>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className={sectionTitle}>Auto-generate tables</h3>
+            <p className="text-xs text-slate-400">Use the event defaults or override below.</p>
+          </div>
+          <span className="rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-100">
+            Quick fill helper
+          </span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1">
-            <label className="text-xs text-slate-500">How many</label>
+            <label className="text-xs text-slate-400">How many</label>
             <input
-              className="w-full rounded-lg border px-3 py-1.5 text-sm"
+              className={inputClasses}
               placeholder="Event default"
               value={seedCount}
               onChange={(e) => setSeedCount(e.target.value)}
@@ -503,66 +509,62 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-slate-500">Start at position</label>
+            <label className="text-xs text-slate-400">Start at position</label>
             <input
-              className="w-full rounded-lg border px-3 py-1.5 text-sm"
+              className={inputClasses}
               value={seedStart}
               onChange={(e) => setSeedStart(e.target.value)}
               type="number"
               min={1}
             />
           </div>
-          <div className="flex items-center gap-2 pt-6">
+          <label className="flex items-center gap-2 pt-6 text-xs text-slate-400">
             <input
               type="checkbox"
-              id="seed-reset"
               checked={seedReset}
               onChange={(e) => setSeedReset(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-sky-400 focus:ring-sky-400"
             />
-            <label htmlFor="seed-reset" className="text-xs text-slate-600">
-              Reset existing tables first
-            </label>
-          </div>
+            Reset existing tables first
+          </label>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm text-white sm:w-auto"
-            disabled={seedTables.isPending}
-          >
+          <button type="submit" className={buttonPrimary} disabled={seedTables.isPending}>
             {seedTables.isPending ? "Generating…" : "Generate tables"}
           </button>
         </div>
       </form>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleCreatePlayer} className="space-y-2">
-          <h3 className="font-medium">Add player</h3>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleCreatePlayer} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Add player</h3>
+            <p className="text-xs text-slate-400">Capture core contact info.</p>
+          </div>
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Full name"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
           />
           <input
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={inputClasses}
             placeholder="Phone number"
             value={playerPhone}
             onChange={(e) => setPlayerPhone(e.target.value)}
           />
-          <button
-            type="submit"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
-            disabled={createPlayer.isPending}
-          >
+          <button type="submit" className={buttonGhost} disabled={createPlayer.isPending}>
             {createPlayer.isPending ? "Adding…" : "Add player"}
           </button>
         </form>
 
-        <form onSubmit={handleDeletePlayer} className="space-y-2">
-          <h3 className="font-medium">Delete player</h3>
+        <form onSubmit={handleDeletePlayer} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Delete player</h3>
+            <p className="text-xs text-slate-400">Remove players who no longer participate.</p>
+          </div>
           <select
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={`${inputClasses} appearance-none`}
             value={playerToDelete}
             onChange={(e) => setPlayerToDelete(e.target.value)}
           >
@@ -577,7 +579,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
           </select>
           <button
             type="submit"
-            className="w-full rounded-lg border border-red-300 text-red-700 py-1.5 text-sm hover:bg-red-50"
+            className="w-full rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-300 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={deletePlayer.isPending || !players.length}
           >
             {deletePlayer.isPending ? "Deleting…" : "Delete player"}
@@ -585,11 +587,14 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
         </form>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <form onSubmit={handleRegisterPlayer} className="space-y-2">
-          <h3 className="font-medium">Register player to event</h3>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <form onSubmit={handleRegisterPlayer} className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Register player to event</h3>
+            <p className="text-xs text-slate-400">Move a player from the database onto the roster.</p>
+          </div>
           <select
-            className="w-full rounded-lg border px-3 py-1.5 text-sm"
+            className={`${inputClasses} appearance-none`}
             value={playerToRegister}
             onChange={(e) => setPlayerToRegister(e.target.value)}
           >
@@ -604,25 +609,25 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
           </select>
           <button
             type="submit"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
+            className={buttonGhost}
             disabled={registerPlayer.isPending || !players.length}
           >
             {registerPlayer.isPending ? "Registering…" : "Register player"}
           </button>
         </form>
 
-        <div className="space-y-2">
-          <h3 className="font-medium">Register selected players</h3>
-          <p className="text-xs opacity-70">
-            Uses the selection from the player list on the left.
-          </p>
+        <div className="space-y-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+          <div className="space-y-1">
+            <h3 className={sectionTitle}>Register selected players</h3>
+            <p className="text-xs text-slate-400">Use the selection from the player list on the left.</p>
+          </div>
           <button
             type="button"
-            className="w-full rounded-lg border py-1.5 text-sm hover:bg-gray-50"
+            className={buttonPrimary}
             onClick={handleRegisterSelected}
             disabled={registerPlayer.isPending || selected.length === 0}
           >
-            {registerPlayer.isPending ? "Working…" : "Register selected"}
+            {registerPlayer.isPending ? "Working…" : `Register ${selected.length || "selected"}`}
           </button>
         </div>
       </div>
