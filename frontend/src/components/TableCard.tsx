@@ -63,53 +63,67 @@ export default function TableCard({ table }: { table: TableEntity }) {
   };
 
   return (
-    <div className="rounded-2xl border p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">{label}</h3>
+    <div className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-500">Table</p>
+          <h3 className="text-lg font-semibold text-slate-900">{label}</h3>
+        </div>
         <span
-          className={`text-xs px-2 py-0.5 rounded-full ${
-            isFree ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            isFree ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
           }`}
         >
           {isFree ? "Free" : "Occupied"}
         </span>
       </div>
 
-      <div className="text-sm space-y-1">
-        <div className="opacity-70">Players:</div>
+      <div className="space-y-2 text-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current match</p>
         {players.length ? (
-          <ul className="list-disc list-inside">
-            {players.map((p) => (
-              <li key={p.id}>{p.full_name}</li>
-            ))}
-          </ul>
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+            <ul className="space-y-1 text-slate-700">
+              {players.map((p) => (
+                <li key={p.id} className="flex items-center gap-2">
+                  <span className="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden />
+                  <span className="truncate">{p.full_name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : (
-          <div className="opacity-60">—</div>
+          <div className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
+            No players assigned.
+          </div>
         )}
       </div>
 
-      {errorMessage && <div className="text-xs text-red-600">{errorMessage}</div>}
+      {errorMessage && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {errorMessage}
+        </div>
+      )}
 
-      <div className="mt-auto flex gap-2">
+      <div className="mt-auto flex flex-wrap gap-2">
         <button
           disabled={!canAssign || busy}
           onClick={onAssign}
-          className={`px-3 py-1.5 rounded-xl border text-sm ${
-            canAssign && !busy ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"
+          className={`flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition ${
+            canAssign && !busy ? "hover:bg-white" : "cursor-not-allowed opacity-50"
           }`}
           title={assignTooltip}
         >
-          Assign
+          Assign selected players
         </button>
         <button
           disabled={!canFree || busy}
           onClick={onFree}
-          className={`px-3 py-1.5 rounded-xl border text-sm ${
-            canFree && !busy ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"
+          className={`flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition ${
+            canFree && !busy ? "hover:bg-white" : "cursor-not-allowed opacity-50"
           }`}
           title={freeTooltip}
         >
-          Free
+          Free table
         </button>
       </div>
     </div>

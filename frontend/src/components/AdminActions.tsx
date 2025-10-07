@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useCreateEvent, useDeleteEvent } from "@/hooks/useEvents";
-import { useCreateTable, useDeleteTable } from "@/hooks/useTables";
+import { useCreateTable, useDeleteTable, useSeedTables } from "@/hooks/useTables";
 import { useCreatePlayer, useDeletePlayer, usePlayers } from "@/hooks/usePlayers";
 import { useRegisterPlayer } from "@/hooks/useRegistrations";
 import { useEventStore } from "@/store/eventStore";
@@ -30,6 +30,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
   const deleteEvent = useDeleteEvent();
   const createTable = useCreateTable(activeEvent?.id);
   const deleteTable = useDeleteTable(activeEvent?.id);
+  const seedTables = useSeedTables(activeEvent?.id);
   const createPlayer = useCreatePlayer();
   const deletePlayer = useDeletePlayer();
   const registerPlayer = useRegisterPlayer(activeEvent?.id);
@@ -39,9 +40,14 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
   const [eventName, setEventName] = useState("");
   const [eventTablesCount, setEventTablesCount] = useState("1");
   const [eventLocation, setEventLocation] = useState("");
+  const [autoSeed, setAutoSeed] = useState(true);
 
   const [tablePosition, setTablePosition] = useState("");
   const [tableToDelete, setTableToDelete] = useState("");
+
+  const [seedCount, setSeedCount] = useState("");
+  const [seedStart, setSeedStart] = useState("1");
+  const [seedReset, setSeedReset] = useState(false);
 
   const [playerName, setPlayerName] = useState("");
   const [playerPhone, setPlayerPhone] = useState("");
@@ -125,8 +131,26 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
       setEventName("");
       setEventTablesCount("1");
       setEventLocation("");
+      setAutoSeed(true);
       setActiveEvent(created);
-      feedback.show("success", `Event "${created.name}" created.`);
+
+      if (autoSeed) {
+        try {
+          await seedTables.mutateAsync({ eventId: created.id, count, reset: true, startAt: 1 });
+          feedback.show(
+            "success",
+            `Event "${created.name}" created with ${count} table${count === 1 ? "" : "s"}.`
+          );
+        } catch (seedError) {
+          const message =
+            seedError instanceof Error
+              ? seedError.message
+              : "Event created but failed to auto-generate tables";
+          feedback.show("error", message);
+        }
+      } else {
+        feedback.show("success", `Event "${created.name}" created.`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create event";
       feedback.show("error", message);
@@ -199,6 +223,43 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
       feedback.show("success", "Table deleted.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete table";
+      feedback.show("error", message);
+    }
+  };
+
+  const handleSeedTables = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    feedback.reset();
+
+    if (!isEventSelected) {
+      feedback.show("error", "Select an event to manage tables.");
+      return;
+    }
+
+    const countValue = seedCount.trim() ? Number(seedCount) : undefined;
+    const startValue = seedStart.trim() ? Number(seedStart) : 1;
+
+    if (countValue !== undefined && (!Number.isInteger(countValue) || countValue <= 0)) {
+      feedback.show("error", "Provide a valid number of tables to generate.");
+      return;
+    }
+    if (!Number.isInteger(startValue) || startValue <= 0) {
+      feedback.show("error", "Provide a valid starting position (1 or greater).");
+      return;
+    }
+
+    try {
+      await seedTables.mutateAsync({
+        count: countValue,
+        startAt: startValue,
+        reset: seedReset
+      });
+      feedback.show(
+        "success",
+        seedReset ? "Tables reset and generated." : "Tables generated successfully."
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate tables";
       feedback.show("error", message);
     }
   };
@@ -297,7 +358,7 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
   };
 
   return (
-    <section className="rounded-2xl border p-4 space-y-4 bg-white/60">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-6 shadow-xl">
       <div className="space-y-1">
         <h2 className="text-lg font-semibold">Quick actions</h2>
         <p className="text-xs opacity-70">
@@ -340,6 +401,14 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
             value={eventLocation}
             onChange={(e) => setEventLocation(e.target.value)}
           />
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={autoSeed}
+              onChange={(e) => setAutoSeed(e.target.checked)}
+            />
+            Auto generate tables after creating the event
+          </label>
           <button
             type="submit"
             className="w-full rounded-lg bg-slate-900 text-white py-1.5 text-sm"
@@ -412,6 +481,59 @@ export default function AdminActions({ tables }: { tables?: TableEntity[] }) {
           </button>
         </form>
       </div>
+
+      <form
+        onSubmit={handleSeedTables}
+        className="space-y-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4"
+      >
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="font-medium">Auto-generate tables</h3>
+          <span className="text-xs text-slate-500">Use the event defaults or override below.</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <label className="text-xs text-slate-500">How many</label>
+            <input
+              className="w-full rounded-lg border px-3 py-1.5 text-sm"
+              placeholder="Event default"
+              value={seedCount}
+              onChange={(e) => setSeedCount(e.target.value)}
+              type="number"
+              min={1}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-slate-500">Start at position</label>
+            <input
+              className="w-full rounded-lg border px-3 py-1.5 text-sm"
+              value={seedStart}
+              onChange={(e) => setSeedStart(e.target.value)}
+              type="number"
+              min={1}
+            />
+          </div>
+          <div className="flex items-center gap-2 pt-6">
+            <input
+              type="checkbox"
+              id="seed-reset"
+              checked={seedReset}
+              onChange={(e) => setSeedReset(e.target.checked)}
+            />
+            <label htmlFor="seed-reset" className="text-xs text-slate-600">
+              Reset existing tables first
+            </label>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm text-white sm:w-auto"
+            disabled={seedTables.isPending}
+          >
+            {seedTables.isPending ? "Generating…" : "Generate tables"}
+          </button>
+        </div>
+      </form>
 
       <div className="grid gap-4 md:grid-cols-2">
         <form onSubmit={handleCreatePlayer} className="space-y-2">

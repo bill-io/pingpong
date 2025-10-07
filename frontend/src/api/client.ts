@@ -5,11 +5,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json" },
     ...init
   });
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(text || `HTTP ${res.status}`);
   }
-  return (await res.json()) as T;
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await res.text().catch(() => "");
+  if (!text) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
+  }
 }
 
 export const api = {
