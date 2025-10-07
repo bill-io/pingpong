@@ -72,3 +72,31 @@ export function useDeleteTable(eventId?: string | number) {
     }
   });
 }
+
+export function useSeedTables(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      vars: {
+        count?: number;
+        reset?: boolean;
+        startAt?: number;
+        eventId?: string | number;
+      }
+    ) => {
+      const targetEventId = vars.eventId ?? eventId;
+      if (!targetEventId) throw new Error("No active event selected");
+      return api.post<TableEntity[]>(`/events/${targetEventId}/tables/seed`, {
+        count: vars.count ?? null,
+        reset: Boolean(vars.reset),
+        start_at: vars.startAt ?? 1
+      });
+    },
+    onSuccess: (_data, vars) => {
+      const targetEventId = vars.eventId ?? eventId;
+      if (targetEventId) {
+        qc.invalidateQueries({ queryKey: ["tables", targetEventId] });
+      }
+    }
+  });
+}
