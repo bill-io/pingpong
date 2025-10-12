@@ -41,7 +41,7 @@ export default function TableCard({ table }: { table: TableEntity }) {
     const now = new Date();
     const minutes = now.getMinutes();
     const remainder = minutes % 5;
-    const addMinutes = remainder === 0 ? 0 : 5 - remainder;
+    const addMinutes = remainder === 0 ? 5 : 5 - remainder;
     const startTime = new Date(now.getTime());
     startTime.setMinutes(minutes + addMinutes);
     startTime.setSeconds(0, 0);

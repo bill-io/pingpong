@@ -104,7 +104,7 @@ export default function MainPage() {
 
     const gridClass =
       layout === "event"
-        ? "grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        ? "grid grid-cols-1 gap-6 md:grid-cols-3"
         : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
     return (
@@ -274,8 +274,8 @@ export default function MainPage() {
               </div>
             </section>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,2.2fr)_minmax(280px,1fr)] xl:grid-cols-[minmax(0,2.5fr)_minmax(320px,1fr)]">
-              <section className="flex flex-col rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,2.8fr)_minmax(320px,1fr)] xl:grid-cols-[minmax(0,3.1fr)_minmax(360px,1fr)]">
+              <section className="flex min-h-[520px] flex-col rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <h3 className="text-xl font-semibold text-white">Tables</h3>
@@ -304,7 +304,7 @@ export default function MainPage() {
                 </div>
               </section>
 
-              <aside className="rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
+              <aside className="rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)] lg:sticky lg:top-8">
                 <EventPlayers
                   eventId={activeEvent?.id}
                   eventName={activeEvent?.name}
