@@ -77,7 +77,7 @@ export default function MainPage() {
     }
   ];
 
-  const renderTables = (emptyMessage: string) => {
+  const renderTables = (emptyMessage: string, layout: "dashboard" | "event" = "dashboard") => {
     if (tablesLoading) {
       return (
         <div className="rounded-xl border border-dashed border-slate-700/60 p-6 text-center text-sm text-slate-400">
@@ -102,8 +102,13 @@ export default function MainPage() {
       );
     }
 
+    const gridClass =
+      layout === "event"
+        ? "grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3";
+
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className={gridClass}>
         {tables.map((table) => (
           <TableCard key={table.id} table={table} />
         ))}
@@ -269,38 +274,45 @@ export default function MainPage() {
               </div>
             </section>
 
-            <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
-              <div className="space-y-6">
-                <div className="rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
-                  <EventPlayers
-                    eventId={activeEvent?.id}
-                    eventName={activeEvent?.name}
-                    registrations={registrationsQuery.data}
-                    isLoading={registrationsQuery.isLoading}
-                    error={registrationsQuery.error}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white">Tables</h3>
-                      <p className="text-sm text-slate-400">Assign players or free tables instantly.</p>
-                    </div>
-                    <div className="rounded-full border border-sky-400/40 bg-slate-900/70 px-3 py-1 text-xs font-semibold text-sky-200">
-                      {tablesLoading ? "Updating…" : `${occupiedTables} occupied • ${freeTables} free`}
-                    </div>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,2.2fr)_minmax(280px,1fr)] xl:grid-cols-[minmax(0,2.5fr)_minmax(320px,1fr)]">
+              <section className="flex flex-col rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">Tables</h3>
+                    <p className="text-sm text-slate-400">
+                      Prioritize active matches and keep assignments flowing from here.
+                    </p>
                   </div>
-
-                  <div className="mt-4 space-y-4">
-                    {renderTables(
-                      "No tables configured for this event yet. Return to the dashboard to add or seed new tables."
+                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-slate-900/70 px-3 py-1 text-xs font-semibold text-sky-200">
+                    {tablesLoading ? (
+                      <span>Updating…</span>
+                    ) : (
+                      <>
+                        <span>{`${occupiedTables} occupied`}</span>
+                        <span className="text-slate-500">•</span>
+                        <span>{`${freeTables} free`}</span>
+                      </>
                     )}
                   </div>
                 </div>
-              </div>
+
+                <div className="mt-6 flex-1">
+                  {renderTables(
+                    "No tables configured for this event yet. Return to the dashboard to add or seed new tables.",
+                    "event"
+                  )}
+                </div>
+              </section>
+
+              <aside className="rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
+                <EventPlayers
+                  eventId={activeEvent?.id}
+                  eventName={activeEvent?.name}
+                  registrations={registrationsQuery.data}
+                  isLoading={registrationsQuery.isLoading}
+                  error={registrationsQuery.error}
+                />
+              </aside>
             </div>
           </div>
         )}

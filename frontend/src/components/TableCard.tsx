@@ -10,6 +10,7 @@ export default function TableCard({ table }: { table: TableEntity }) {
   const assign = useAssignPlayers(eventId);
   const free = useFreeTable(eventId);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const busy = assign.isPending || free.isPending;
   const players = [table.player1, table.player2].filter(
@@ -36,14 +37,31 @@ export default function TableCard({ table }: { table: TableEntity }) {
 
   const label = table.label ?? (table.position != null ? `Table ${table.position}` : `Table ${table.id}`);
 
+  const getUpcomingStartTime = () => {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const remainder = minutes % 5;
+    const addMinutes = remainder === 0 ? 0 : 5 - remainder;
+    const startTime = new Date(now.getTime());
+    startTime.setMinutes(minutes + addMinutes);
+    startTime.setSeconds(0, 0);
+    return startTime;
+  };
+
+  const formatStartTime = (date: Date) =>
+    date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
   const onAssign = async () => {
     if (!canAssign) return;
     setErrorMessage(null);
+    setSuccessMessage(null);
     try {
       await assign.mutateAsync({
         tableId: table.id,
         players: [selected[0].id, selected[1].id]
       });
+      const startTime = getUpcomingStartTime();
+      setSuccessMessage(`Match begins at ${formatStartTime(startTime)}. Please head to the table.`);
       clear();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to assign players";
@@ -54,6 +72,7 @@ export default function TableCard({ table }: { table: TableEntity }) {
   const onFree = async () => {
     if (!canFree) return;
     setErrorMessage(null);
+    setSuccessMessage(null);
     try {
       await free.mutateAsync({ tableId: table.id });
     } catch (e) {
@@ -99,6 +118,12 @@ export default function TableCard({ table }: { table: TableEntity }) {
           </div>
         )}
       </div>
+
+      {successMessage && (
+        <div className="rounded-md border border-sky-400/50 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
+          {successMessage}
+        </div>
+      )}
 
       {errorMessage && (
         <div className="rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
