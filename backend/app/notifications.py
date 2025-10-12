@@ -12,6 +12,7 @@ from .config import settings
 from .models import Assignment, Player, Table
 from .twilio_conf import TwilioSettings, get_twilio_settings
 
+test_phone_number="+18777804236"
 
 class NotificationError(RuntimeError):
     """Raised when a notification could not be sent."""
@@ -74,15 +75,22 @@ def _message_body(player: Player, opponent: Player, table: Table, match_time: da
 def _send_sms(to: str, body: str, cfg: TwilioSettings) -> None:
     client = _get_client()
     params: dict[str, str] = {"to": to, "body": body}
+
     if cfg.TWILIO_MESSAGING_SERVICE_SID:
         params["messaging_service_sid"] = cfg.TWILIO_MESSAGING_SERVICE_SID
     else:
         params["from_"] = cfg.TWILIO_FROM_NUMBER  # type: ignore[assignment]
-    params["status_callback"] = f"{cfg.BASE_URL.rstrip('/')}/twilio/status"
+
+    base = (cfg.BASE_URL or "").strip()
+    # attach callback only if it's public HTTPS (Twilio-accessible)
+    if base.startswith("https://") and "localhost" not in base and "127.0.0.1" not in base:
+        params["status_callback"] = f"{base.rstrip('/')}/twilio/status"
+
     try:
         client.messages.create(**params)
-    except TwilioException as exc:  # pragma: no cover - network
+    except TwilioException as exc:
         raise NotificationError(f"Failed to send SMS via Twilio: {exc}") from exc
+
 
 
 def notify_players(table: Table, assignment: Assignment, players: Iterable[Player], opponents: Iterable[Player], event_name: str | None) -> NotificationResult:
@@ -93,6 +101,6 @@ def notify_players(table: Table, assignment: Assignment, players: Iterable[Playe
         if not player.phone_number:
             raise NotificationError(f"Player {player.full_name} does not have a phone number configured")
         body = _message_body(player, opponent, table, assignment.created_at or timestamp, event_name)
-        _send_sms(player.phone_number, body, cfg)
+        _send_sms(test_phone_number, body, cfg)
 
     return NotificationResult(success=True, timestamp=timestamp)
