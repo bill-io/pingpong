@@ -10,11 +10,14 @@ import { usePlayers } from "@/hooks/usePlayers";
 import { useRegistrations } from "@/hooks/useRegistrations";
 import { useEventStore } from "@/store/eventStore";
 import { useSelection } from "@/store/selectionStore";
+import { useAuthStore } from "@/store/authStore";
 
 export default function MainPage() {
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents();
   const { activeEvent, setActiveEvent } = useEventStore();
   const { clear } = useSelection();
+  const agent = useAuthStore((state) => state.agent);
+  const logout = useAuthStore((state) => state.logout);
   const playersQuery = usePlayers();
   const [activeView, setActiveView] = useState<"dashboard" | "event">("dashboard");
   const [now, setNow] = useState(() => Date.now());
@@ -148,9 +151,33 @@ export default function MainPage() {
     );
   };
 
+  const handleSignOut = () => {
+    clear();
+    logout();
+  };
+
+  if (!agent) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 md:px-8">
+        <div className="flex flex-col gap-4 rounded-3xl border border-slate-700/60 bg-slate-900/70 p-5 text-sm shadow-lg shadow-sky-500/10 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Signed in as</p>
+            <p className="mt-1 text-lg font-semibold text-white">{agent.full_name}</p>
+            <p className="text-xs text-slate-400">{agent.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="inline-flex items-center justify-center rounded-xl border border-sky-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:bg-sky-500/10"
+          >
+            Sign out
+          </button>
+        </div>
+
         <header className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <span className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-300">Control center</span>

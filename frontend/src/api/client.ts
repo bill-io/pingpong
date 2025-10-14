@@ -1,13 +1,22 @@
-const BASE = ""; // use relative, Nginx/Vite proxy /api
+import { useAuthStore } from "@/store/authStore";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { token, logout } = useAuthStore.getState();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`/api${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...init
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+    if (res.status === 401) {
+      logout();
+    }
     throw new Error(text || `HTTP ${res.status}`);
   }
 

@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from .config import settings
 from .db import Base, engine
-from .routers import assignments, events, players, registrations, tables
+from .routers import assignments, auth, events, players, registrations, tables, agents
 from .twilio_status import router as twilio_router
 
 os.environ["TZ"] = settings.TZ
@@ -35,4 +35,6 @@ app.include_router(players.router, prefix=API_PREFIX)
 app.include_router(registrations.router, prefix=API_PREFIX)
 app.include_router(tables.router, prefix=API_PREFIX)
 app.include_router(assignments.router, prefix=API_PREFIX)
+app.include_router(agents.router, prefix=API_PREFIX)
+app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(twilio_router)
