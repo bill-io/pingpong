@@ -1,8 +1,7 @@
 # backend/app/schemas.py
 from datetime import datetime
-from typing import Optional,List,Literal
-from uuid import UUID
-from pydantic import BaseModel, Field
+from typing import Optional, List, Literal
+from pydantic import BaseModel, EmailStr, Field
 
 class EventCreate(BaseModel):
     name: str
@@ -66,7 +65,32 @@ class RegistrationOut(BaseModel):
     player_id: int
     created_at: datetime
     player: PlayerOut
-    model_config = {"from_attributes": True}  
+    model_config = {"from_attributes": True}
+
+
+class AgentCreate(BaseModel):
+    full_name: str
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class AgentOut(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AgentLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AgentLoginResponse(BaseModel):
+    agent: AgentOut
+    token: str
 
 
 

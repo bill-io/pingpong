@@ -1,6 +1,6 @@
 # backend/app/models.py
 import uuid
-from sqlalchemy import Column, String, Integer, DateTime, UniqueConstraint , ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, UniqueConstraint, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -87,3 +87,13 @@ class Assignment(Base):
     table = relationship("Table", foreign_keys=[table_id])
     player1 = relationship("Player", foreign_keys=[player1_id])
     player2 = relationship("Player", foreign_keys=[player2_id])
+
+
+class Agent(Base):
+    __tablename__ = "agent"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    full_name = Column(String, nullable=False)
+    email = Column(String, nullable=False, unique=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

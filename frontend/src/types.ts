@@ -42,3 +42,15 @@ export type Registration = {
   created_at?: string;
   player: Player;
 };
+
+export type Agent = {
+  id: number;
+  full_name: string;
+  email: string;
+  created_at: string;
+};
+
+export type AgentLoginResponse = {
+  agent: Agent;
+  token: string;
+};
