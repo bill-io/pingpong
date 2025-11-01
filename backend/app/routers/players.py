@@ -6,30 +6,62 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from .. import models, schemas
-from sqlalchemy import or_, and_
+from sqlalchemy import or_
+from ..security import get_current_agent
 
 
 router = APIRouter(prefix="/players", tags=["players"]) #endpoint /players
 MAX_BULK_IMPORT_ROWS = 200 # to prevent abuse
 
 @router.get("", response_model=List[schemas.PlayerOut])
-def list_players(db: Session = Depends(get_db)):
-    return db.query(models.Player).order_by(models.Player.created_at.desc()).all() #list all players ordered by created_at desc
+def list_players(
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    return (
+        db.query(models.Player)
+        .filter(models.Player.agent_id == current_agent.id)
+        .order_by(models.Player.created_at.desc())
+        .all()
+    ) #list all players ordered by created_at desc
 
 @router.get("/{phone_number}", response_model=schemas.PlayerOut) #get player by phone number
-def get_player(phone_number: str, db: Session = Depends(get_db)):
-    player = db.query(models.Player).filter(models.Player.phone_number == phone_number).first()
+def get_player(
+    phone_number: str,
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    player = (
+        db.query(models.Player)
+        .filter(
+            models.Player.phone_number == phone_number,
+            models.Player.agent_id == current_agent.id,
+        )
+        .first()
+    )
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
     return player
 
 
 @router.post("", response_model=schemas.PlayerOut, status_code=201) #create a new player
-def create_player(payload: schemas.PlayerCreate, db: Session = Depends(get_db)):
-    existsing_player= db.query(models.Player).filter(models.Player.phone_number==payload.phone_number).first()
+def create_player(
+    payload: schemas.PlayerCreate,
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    existsing_player = (
+        db.query(models.Player)
+        .filter(
+            models.Player.phone_number == payload.phone_number,
+            models.Player.agent_id == current_agent.id,
+        )
+        .first()
+    )
     if existsing_player:
         raise HTTPException(status_code=400 , detail="This phone number already exists in the Player database")
     player=models.Player(
+        agent_id=current_agent.id,
         full_name=payload.full_name,
         phone_number=payload.phone_number
     )
@@ -39,7 +71,11 @@ def create_player(payload: schemas.PlayerCreate, db: Session = Depends(get_db)):
     return player
 
 @router.post("/import-csv", response_model=schemas.BulkImportResult) #bulk import players from csv file
-async def import_players_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_players_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
     """
      CSV columns: full_name,phone_number
     """
@@ -56,7 +92,13 @@ async def import_players_csv(file: UploadFile = File(...), db: Session = Depends
         raise HTTPException(status_code=400, detail=f"Invalid CSV file. The following columns are required: {', '.join(required_columns)}")
     
     #Preload existing phone numbers to minimize db queries
-    existing_phone_numbers={pn for (pn,) in db.query(models.Player.phone_number).all() if pn}
+    existing_phone_numbers = {
+        pn
+        for (pn,) in db.query(models.Player.phone_number)
+        .filter(models.Player.agent_id == current_agent.id)
+        .all()
+        if pn
+    }
     
     created_count=0
     errors: List[str]= []
@@ -78,9 +120,10 @@ async def import_players_csv(file: UploadFile = File(...), db: Session = Depends
             errors.append(f"Row {total}: phone_number '{phone_number}' already exists.")
             continue
         
-        player=models.Player(
+        player = models.Player(
+            agent_id=current_agent.id,
             full_name=full_name,
-            phone_number=phone_number
+            phone_number=phone_number,
         )
         db.add(player)
         try:
@@ -91,25 +134,44 @@ async def import_players_csv(file: UploadFile = File(...), db: Session = Depends
         except Exception as e:
             db.rollback()
             errors.append(f"Row {total}: Database error: {str(e)}")
-        
-        return schemas.BulkImportResult(
-            total_rows=total,
-            created=created_count,
-            skipped=total - created_count,
-            errors=errors
-        )
+
+    return schemas.BulkImportResult(
+        total_rows=total,
+        created=created_count,
+        skipped=total - created_count,
+        errors=errors
+    )
 
 #------------Alter Player----------------
 #alter phone number
 @router.put("/{phone_number}", response_model=schemas.PlayerOut)
-def update_player(phone_number: str, payload: schemas.PlayerCreate, db: Session = Depends(get_db)):
-    player = db.query(models.Player).filter(models.Player.phone_number == phone_number).first()
+def update_player(
+    phone_number: str,
+    payload: schemas.PlayerCreate,
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    player = (
+        db.query(models.Player)
+        .filter(
+            models.Player.phone_number == phone_number,
+            models.Player.agent_id == current_agent.id,
+        )
+        .first()
+    )
     if not player:
         raise HTTPException(status_code=404, detail="Player not found with that number")
     
     if payload.phone_number != phone_number:
         # Check for uniqueness of new phone number
-        existing_player = db.query(models.Player).filter(models.Player.phone_number == payload.phone_number).first()
+        existing_player = (
+            db.query(models.Player)
+            .filter(
+                models.Player.phone_number == payload.phone_number,
+                models.Player.agent_id == current_agent.id,
+            )
+            .first()
+        )
         if existing_player:
             raise HTTPException(status_code=400, detail="This new phone number already exists in the Player database")
     
@@ -120,8 +182,16 @@ def update_player(phone_number: str, payload: schemas.PlayerCreate, db: Session 
 
 #------------DELETE PLAYER/S----------------
 @router.delete("/id/{player_id}", status_code=204)
-def delete_player_by_id(player_id: int, db: Session = Depends(get_db)):
-    player = db.query(models.Player).filter(models.Player.id == player_id).first()
+def delete_player_by_id(
+    player_id: int,
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    player = (
+        db.query(models.Player)
+        .filter(models.Player.id == player_id, models.Player.agent_id == current_agent.id)
+        .first()
+    )
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
     db.delete(player)
@@ -130,10 +200,17 @@ def delete_player_by_id(player_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{phone_number}", status_code=204)
-def delete_player(phone_number: str, db: Session = Depends(get_db)):
+def delete_player(
+    phone_number: str,
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
     player = (
         db.query(models.Player)
-        .filter(models.Player.phone_number == phone_number)
+        .filter(
+            models.Player.phone_number == phone_number,
+            models.Player.agent_id == current_agent.id,
+        )
         .first()
     )
     if not player:
@@ -143,8 +220,15 @@ def delete_player(phone_number: str, db: Session = Depends(get_db)):
     return None
 
 @router.delete("", status_code=204)
-def delete_all_players(db: Session = Depends(get_db)):
-    db.query(models.Player).delete(synchronize_session=False)
+def delete_all_players(
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    (
+        db.query(models.Player)
+        .filter(models.Player.agent_id == current_agent.id)
+        .delete(synchronize_session=False)
+    )
     db.commit()
     return
 
@@ -155,9 +239,14 @@ def player_state_by_id(
     event_id: int = Path(...),
     player_id: int = Path(...),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _get_event_or_404(db, event_id)
-    p = db.query(models.Player).filter(models.Player.id == player_id).first()
+    _get_event_or_404(db, event_id, current_agent.id)
+    p = (
+        db.query(models.Player)
+        .filter(models.Player.id == player_id, models.Player.agent_id == current_agent.id)
+        .first()
+    )
     if not p:
         raise HTTPException(status_code=404, detail="Player not found")
     return _player_state_payload(db, event_id, p)
@@ -167,9 +256,17 @@ def player_state_by_phone(
     event_id: int = Path(...),
     phone_number: str = Path(...),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _get_event_or_404(db, event_id)
-    p = db.query(models.Player).filter(models.Player.phone_number == phone_number).first()
+    _get_event_or_404(db, event_id, current_agent.id)
+    p = (
+        db.query(models.Player)
+        .filter(
+            models.Player.phone_number == phone_number,
+            models.Player.agent_id == current_agent.id,
+        )
+        .first()
+    )
     if not p:
         raise HTTPException(status_code=404, detail="Player not found")
     return _player_state_payload(db, event_id, p)
@@ -179,8 +276,12 @@ def player_state_by_phone(
 
 
 #------------Helper Functions----------------
-def _get_event_or_404(db: Session, event_id: int) -> models.Event:
-    ev = db.query(models.Event).filter(models.Event.id == event_id).first()
+def _get_event_or_404(db: Session, event_id: int, agent_id: int) -> models.Event:
+    ev = (
+        db.query(models.Event)
+        .filter(models.Event.id == event_id, models.Event.agent_id == agent_id)
+        .first()
+    )
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
     return ev

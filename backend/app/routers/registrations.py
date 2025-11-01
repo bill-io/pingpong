@@ -1,22 +1,31 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from .. import models, schemas
+from ..security import get_current_agent
 
 router = APIRouter(prefix="/events/{event_id}/registrations", tags=["registrations"])
 
-def _get_event_or_404(event_id: int, db: Session) -> models.Event:
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+def _get_event_or_404(event_id: int, db: Session, agent_id: int) -> models.Event:
+    event = (
+        db.query(models.Event)
+        .filter(models.Event.id == event_id, models.Event.agent_id == agent_id)
+        .first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
 @router.get("", response_model=List[schemas.RegistrationOut])
-def list_registrations(event_id: int = Path(...), db: Session = Depends(get_db)):
-    _get_event_or_404(event_id, db)
+def list_registrations(
+    event_id: int = Path(...),
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    _get_event_or_404(event_id, db, current_agent.id)
     return (
         db.query(models.Registration)
         .filter(models.Registration.event_id == event_id)
@@ -31,16 +40,27 @@ def add_registration(
     payload: schemas.RegistrationCreate,
     event_id: int = Path(...),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _get_event_or_404(event_id, db)
+    _get_event_or_404(event_id, db, current_agent.id)
 
     player: Optional[models.Player] = None
     if payload.player_id is not None:
-        player = db.query(models.Player).filter(models.Player.id == payload.player_id).first()
+        player = (
+            db.query(models.Player)
+            .filter(
+                models.Player.id == payload.player_id,
+                models.Player.agent_id == current_agent.id,
+            )
+            .first()
+        )
     elif payload.phone_number:
         player = (
             db.query(models.Player)
-            .filter(models.Player.phone_number == payload.phone_number)
+            .filter(
+                models.Player.phone_number == payload.phone_number,
+                models.Player.agent_id == current_agent.id,
+            )
             .first()
         )
 
@@ -77,8 +97,9 @@ def remove_registration(
     registration_id: int,
     event_id: int = Path(...),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _get_event_or_404(event_id, db)
+    _get_event_or_404(event_id, db, current_agent.id)
     reg = (
         db.query(models.Registration)
         .filter(
