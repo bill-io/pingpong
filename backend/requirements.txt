@@ -8,3 +8,4 @@ python-multipart==0.0.9
 twilio~=9.0
 phonenumbers
 passlib[bcrypt]==1.7.4
+bcrypt==3.2.2        

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from . import models
 from .db import get_db
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
