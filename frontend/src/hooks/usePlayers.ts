@@ -1,8 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { Player } from "@/types";
-
-
 
 function normalizePlayer(p: any): Player {
   const state = (p.state ?? p.status ?? "").toString().toLowerCase();
@@ -15,7 +13,7 @@ function normalizePlayer(p: any): Player {
       typeof p.is_playing === "boolean"
         ? p.is_playing
         : state
-        ? state === "playing" || state === "free" 
+        ? state === "playing"
         : undefined
   };
 }
@@ -23,7 +21,31 @@ function normalizePlayer(p: any): Player {
 export function usePlayers() {
   return useQuery({
     queryKey: ["players"],
-    queryFn: () => api.get<Player[]>("/players"),
+    queryFn: async () => {
+      const res = await api.get<unknown[]>("/players");
+      return res.map((p) => normalizePlayer(p)) as Player[];
+    },
     refetchInterval: 5000
+  });
+}
+
+export function useCreatePlayer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { full_name: string; phone_number?: string | null }) =>
+      api.post<Player>("/players", payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["players"] });
+    }
+  });
+}
+
+export function useDeletePlayer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (playerId: Player["id"]) => api.delete<void>(`/players/id/${playerId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["players"] });
+    }
   });
 }

@@ -1,39 +1,37 @@
-from typing import List
-from uuid import UUID
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from .. import models, schemas
+from ..security import get_current_agent
 
-router=APIRouter(prefix="/events/{event_id}/registrations", tags=["registrations"])
+router = APIRouter(prefix="/events/{event_id}/registrations", tags=["registrations"])
 
-@router.get("", response_model=List[schemas.RegistrationOut])
-async def get_registrations(db: Session = Depends(get_db)):
-    return db.query(models.Registration).order_by(models.Registration.created_at.desc()).all() #list all players ordered by created_at desc
-
-
-
-def get_event_or_404(event_id: int, db: Session):
-    event=db.query(models.Event).filter(models.Event.id==event_id).first()
+def _get_event_or_404(event_id: int, db: Session, agent_id: int) -> models.Event:
+    event = (
+        db.query(models.Event)
+        .filter(models.Event.id == event_id, models.Event.agent_id == agent_id)
+        .first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
-@router.get("",response_model=List[schemas.RegistrationOut])
+@router.get("", response_model=List[schemas.RegistrationOut])
 def list_registrations(
-    event_id: int=Path(..., description="The ID of the event"),
-    db: Session=Depends(get_db)
+    event_id: int = Path(...),
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    get_event_or_404(event_id, db)
-    regs=(
+    _get_event_or_404(event_id, db, current_agent.id)
+    return (
         db.query(models.Registration)
         .filter(models.Registration.event_id == event_id)
         .order_by(models.Registration.created_at.desc())
         .all()
     )
-    return regs
 
 
 
@@ -42,20 +40,36 @@ def add_registration(
     payload: schemas.RegistrationCreate,
     event_id: int = Path(...),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    get_event_or_404(event_id, db)
+    _get_event_or_404(event_id, db, current_agent.id)
 
-    # Resolve the player
-    player = None
-    if payload.player_id:
-        player = db.query(models.Player).filter(models.Player.id == payload.player_id).first()
+    player: Optional[models.Player] = None
+    if payload.player_id is not None:
+        player = (
+            db.query(models.Player)
+            .filter(
+                models.Player.id == payload.player_id,
+                models.Player.agent_id == current_agent.id,
+            )
+            .first()
+        )
     elif payload.phone_number:
-        player = db.query(models.Player).filter(models.Player.phone_number == payload.phone_number).first()
+        player = (
+            db.query(models.Player)
+            .filter(
+                models.Player.phone_number == payload.phone_number,
+                models.Player.agent_id == current_agent.id,
+            )
+            .first()
+        )
 
     if not player:
-        raise HTTPException(status_code=404, detail="Player not found (use player_id or phone_number)")
+        raise HTTPException(
+            status_code=404,
+            detail="Player not found (use player_id or phone_number)",
+        )
 
-    # Check duplicate
     exists = (
         db.query(models.Registration)
         .filter(
@@ -76,16 +90,22 @@ def add_registration(
     db.refresh(reg)
     return reg
 
+    s
+
 @router.delete("/{registration_id}", status_code=204)
 def remove_registration(
     registration_id: int,
     event_id: int = Path(...),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _get_event_or_404(db, event_id)
+    _get_event_or_404(event_id, db, current_agent.id)
     reg = (
         db.query(models.Registration)
-        .filter(models.Registration.id == registration_id, models.Registration.event_id == event_id)
+        .filter(
+            models.Registration.id == registration_id,
+            models.Registration.event_id == event_id,
+        )
         .first()
     )
     if not reg:

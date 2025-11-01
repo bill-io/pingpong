@@ -5,24 +5,39 @@ from sqlalchemy import and_
 
 from ..db import get_db
 from .. import models, schemas
+from ..security import get_current_agent
 
 router = APIRouter(prefix="/events/{event_id}/tables", tags=["tables"])
 
 
-def _event_exists(db: Session, event_id: int):
-    if not db.query(models.Event.id).filter(models.Event.id == event_id).first():
+def _event_exists(db: Session, event_id: int, agent_id: int):
+    exists = (
+        db.query(models.Event.id)
+        .filter(models.Event.id == event_id, models.Event.agent_id == agent_id)
+        .first()
+    )
+    if not exists:
         raise HTTPException(status_code=404, detail="Event not found")
 
 
 @router.get("", response_model=List[schemas.TableOut])
-def list_tables(event_id: int = Path(...), db: Session = Depends(get_db)):
-    _event_exists(db, event_id)
+def list_tables(
+    event_id: int = Path(...),
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    _event_exists(db, event_id, current_agent.id)
     return db.query(models.Table).filter(models.Table.event_id == event_id).order_by(models.Table.id).all()
 
 
 @router.post("/pos/{position}",response_model=schemas.TableOut, status_code=201)
-def create_table_at_position(event_id: int = Path(...), position:int = Path(...), db: Session = Depends(get_db)):
-    _event_exists(db, event_id)
+def create_table_at_position(
+    event_id: int = Path(...),
+    position:int = Path(...),
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    _event_exists(db, event_id, current_agent.id)
     exist= (
         db.query(models.Table.id)
         .filter(models.Table.event_id == event_id, models.Table.position == position)
@@ -42,9 +57,14 @@ def seed_tables(
     payload: schemas.TableSeed,
     event_id : int = Path(...),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _event_exists(db,event_id)
-    event= db.query(models.Event).filter(models.Event.id == event_id).first()
+    _event_exists(db,event_id, current_agent.id)
+    event= (
+        db.query(models.Event)
+        .filter(models.Event.id == event_id, models.Event.agent_id == current_agent.id)
+        .first()
+    )
     target= payload.count if payload.count is not None else event.tables_count  # use event.tables_count if not provided
     if target <= 0:
         raise HTTPException(status_code=400, detail="Target table count must be positive")
@@ -90,8 +110,9 @@ def set_table_status(
     table_id: int = Path(...),
     status : str = Path(..., pattern="^(free|occupied)$"),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _event_exists(db, event_id)
+    _event_exists(db, event_id, current_agent.id)
     t = db.query(models.Table).filter(
         and_(models.Table.id == table_id, models.Table.event_id == event_id)).first()
     if not t:
@@ -122,10 +143,11 @@ def set_table_status(
     position: int = Path(...),
     status : str = Path(..., pattern="^(free|occupied)$"),
     db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
 ):
-    _event_exists(db, event_id)
+    _event_exists(db, event_id, current_agent.id)
     t = db.query(models.Table).filter(
-        and_(models.position == position, models.Table.event_id == event_id)).first()
+        and_(models.Table.position == position, models.Table.event_id == event_id)).first()
     if not t:
         raise HTTPException(status_code=404, detail="Table not found")
     if status == "free":
@@ -146,38 +168,69 @@ def set_table_status(
 
 
 @router.get("/board", response_model=List[schemas.TableBoardRow])
-def board(event_id: int = Path(...), db: Session = Depends(get_db)):
-    _event_exists(db, event_id)
+def board(
+    event_id: int = Path(...),
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    _event_exists(db, event_id, current_agent.id)
     rows: list[schemas.TableBoardRow] = []
     tables = db.query(models.Table).filter(models.Table.event_id == event_id).order_by(models.Table.id).all()
     for t in tables:
         p1 = p2 = None
+        assignment_status = None
+        started_at = notified_at = ended_at = created_at = None
         if t.current_assignment_id:
             a = db.query(models.Assignment).filter(models.Assignment.id == t.current_assignment_id).first()
             if a and a.status == "active":
                 p1, p2 = a.player1, a.player2
+                assignment_status = a.status
+                started_at = a.started_at
+                notified_at = a.notified_at
+                ended_at = a.ended_at
+                created_at = a.created_at
         rows.append(
             schemas.TableBoardRow(
-                id=t.id, label=t.label, status=t.status,
-                player1=p1, player2=p2
+                id=t.id,
+                position=t.position,
+                status=t.status,
+                label=f"Table {t.position}" if t.position is not None else f"Table {t.id}",
+                current_assignment_id=t.current_assignment_id,
+                assignment_status=assignment_status,
+                assignment_created_at=created_at,
+                started_at=started_at,
+                notified_at=notified_at,
+                ended_at=ended_at,
+                player1=p1,
+                player2=p2,
             )
         )
     return rows
 
 
 #---------DELETE-----------------
-'''@router.delete("/{table_id}", status_code=204)
-def delete_table(event_id: int = Path(...), table_id: int = Path(...), db: Session = Depends(get_db)):
-    _event_exists(db, event_id)
-    t = db.query(models.Table).filter(and_(models.Table.id == table_id, models.Table.event_id == event_id)).first()
+@router.delete("/{table_id}", status_code=204)
+def delete_table(
+    event_id: int = Path(...),
+    table_id: int = Path(...),
+    db: Session = Depends(get_db),
+    current_agent: models.Agent = Depends(get_current_agent),
+):
+    _event_exists(db, event_id, current_agent.id)
+    t = (
+        db.query(models.Table)
+        .filter(and_(models.Table.id == table_id, models.Table.event_id == event_id))
+        .first()
+    )
     if not t:
         raise HTTPException(status_code=404, detail="Table not found")
     if t.current_assignment_id:
         raise HTTPException(status_code=400, detail="Cannot delete a table with an active assignment")
     db.delete(t)
     db.commit()
-    return
-'''
+    return None
+
+
 
 @router.delete("/pos/{position}", status_code=204)
 def delete_table_by_position(event_id: int = Path(...), position: int = Path(...), db: Session = Depends(get_db)):
@@ -197,3 +250,4 @@ def delete_all_tables(event_id: int = Path(...), db: Session = Depends(get_db)):
     db.query(models.Table).filter(models.Table.event_id == event_id).delete(synchronize_session=False)
     db.commit()
     return
+

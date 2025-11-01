@@ -1,15 +1,39 @@
-const BASE = ""; // use relative, Nginx/Vite proxy /api
+import { useAuthStore } from "@/store/authStore";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { token, logout } = useAuthStore.getState();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`/api${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...init
   });
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+    if (res.status === 401) {
+      logout();
+    }
     throw new Error(text || `HTTP ${res.status}`);
   }
-  return (await res.json()) as T;
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await res.text().catch(() => "");
+  if (!text) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
+  }
 }
 
 export const api = {
@@ -17,6 +41,11 @@ export const api = {
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "POST",
+      body: body ? JSON.stringify(body) : undefined
+    }),
+  delete: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "DELETE",
       body: body ? JSON.stringify(body) : undefined
     })
 };

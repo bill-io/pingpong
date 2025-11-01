@@ -1,8 +1,7 @@
 # backend/app/schemas.py
 from datetime import datetime
-from typing import Optional,List,Literal
-from uuid import UUID
-from pydantic import BaseModel, Field
+from typing import Optional, List, Literal
+from pydantic import BaseModel, EmailStr, Field
 
 class EventCreate(BaseModel):
     name: str
@@ -66,7 +65,32 @@ class RegistrationOut(BaseModel):
     player_id: int
     created_at: datetime
     player: PlayerOut
-    model_config = {"from_attributes": True}  
+    model_config = {"from_attributes": True}
+
+
+class AgentCreate(BaseModel):
+    full_name: str
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class AgentOut(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AgentLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AgentLoginResponse(BaseModel):
+    agent: AgentOut
+    token: str
 
 
 
@@ -107,6 +131,8 @@ class AssignmentOut(BaseModel):
     status: str
     created_at: datetime
     notified_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
     player1: PlayerSlim
     player2: PlayerSlim
     model_config = {"from_attributes": True}
@@ -121,7 +147,14 @@ class SwapTables(BaseModel):
 # ---- Optional: board view row ----
 class TableBoardRow(BaseModel):
     id: int
-    label: str
+    position: int
     status: str
+    label: Optional[str] = None
+    current_assignment_id: Optional[int] = None
+    assignment_status: Optional[str] = None
+    assignment_created_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    notified_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
     player1: Optional[PlayerSlim] = None
     player2: Optional[PlayerSlim] = None

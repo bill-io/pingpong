@@ -3,7 +3,8 @@ import os
 from fastapi import FastAPI
 from .config import settings
 from .db import Base, engine
-from .routers import events , players , registrations , tables,assignments
+from .routers import assignments, auth, events, players, registrations, tables, agents
+from .twilio_status import router as twilio_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,16 +12,7 @@ os.environ["TZ"] = settings.TZ
 
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
-# --- CORS (add this block) ---
-origins = [o.strip() for o in settings.FRONTEND_ORIGINS.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-# --- end CORS ---
+API_PREFIX = "/api"
 
 @app.on_event("startup")
 def on_startup():
@@ -40,10 +32,11 @@ def root():
 
 
 # Routers
-app.include_router(events.router)
-app.include_router(players.router)
-app.include_router(registrations.router)
-app.include_router(tables.router)
-app.include_router(assignments.router)
-
-
+app.include_router(events.router, prefix=API_PREFIX)
+app.include_router(players.router, prefix=API_PREFIX)
+app.include_router(registrations.router, prefix=API_PREFIX)
+app.include_router(tables.router, prefix=API_PREFIX)
+app.include_router(assignments.router, prefix=API_PREFIX)
+app.include_router(agents.router, prefix=API_PREFIX)
+app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(twilio_router)

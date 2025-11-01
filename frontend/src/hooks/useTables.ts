@@ -1,33 +1,128 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import type { TableEntity } from "@/types";
+import type { Player, TableEntity } from "@/types";
 
-export function useTables() {
+export function useTables(eventId?: string | number) {
   return useQuery({
-    queryKey: ["tables"],
-    queryFn: () => api.get<TableEntity[]>("/tables"),
+    queryKey: ["tables", eventId],
+    queryFn: () => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.get<TableEntity[]>(`/events/${eventId}/tables/board`);
+    },
+    enabled: Boolean(eventId),
     refetchInterval: 5000
   });
 }
 
-export function useAssignPlayers() {
+export function useAssignPlayers(eventId?: string | number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { tableId: TableEntity["id"]; playerIds: (string | number)[] }) =>
-      api.post<TableEntity>(`/tables/${vars.tableId}/assign`, { player_ids: vars.playerIds }),
+    mutationFn: async (vars: { tableId: TableEntity["id"]; players: [Player["id"], Player["id"]]; notify?: boolean }) => {
+      if (!eventId) throw new Error("No active event selected");
+      const [p1, p2] = vars.players;
+      return api.post<TableEntity>(`/events/${eventId}/tables/${vars.tableId}/assign`, {
+        player1_id: p1,
+        player2_id: p2,
+        notify: vars.notify ?? true
+      });
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tables"] });
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+      qc.invalidateQueries({ queryKey: ["players"] });
     }
   });
 }
 
-export function useFreeTable() {
+export function useFreeTable(eventId?: string | number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { tableId: TableEntity["id"] }) =>
-      api.post<TableEntity>(`/tables/${vars.tableId}/free`),
+    mutationFn: async (vars: { tableId: TableEntity["id"] }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.post<TableEntity>(`/events/${eventId}/tables/${vars.tableId}/free`);
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tables"] });
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+      qc.invalidateQueries({ queryKey: ["players"] });
+    }
+  });
+}
+
+export function useNotifyAssignment(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { assignmentId: number | string }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.post(`/events/${eventId}/assignments/${vars.assignmentId}/notify`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}
+
+export function useStartTimer(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { assignmentId: number | string }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.post(`/events/${eventId}/assignments/${vars.assignmentId}/start`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}
+
+export function useCreateTable(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { position: number }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.post<TableEntity>(`/events/${eventId}/tables/pos/${vars.position}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}
+
+export function useDeleteTable(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { tableId: TableEntity["id"] }) => {
+      if (!eventId) throw new Error("No active event selected");
+      return api.delete<void>(`/events/${eventId}/tables/${vars.tableId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tables", eventId] });
+    }
+  });
+}
+
+export function useSeedTables(eventId?: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      vars: {
+        count?: number;
+        reset?: boolean;
+        startAt?: number;
+        eventId?: string | number;
+      }
+    ) => {
+      const targetEventId = vars.eventId ?? eventId;
+      if (!targetEventId) throw new Error("No active event selected");
+      return api.post<TableEntity[]>(`/events/${targetEventId}/tables/seed`, {
+        count: vars.count ?? null,
+        reset: Boolean(vars.reset),
+        start_at: vars.startAt ?? 1
+      });
+    },
+    onSuccess: (_data, vars) => {
+      const targetEventId = vars.eventId ?? eventId;
+      if (targetEventId) {
+        qc.invalidateQueries({ queryKey: ["tables", targetEventId] });
+      }
     }
   });
 }
