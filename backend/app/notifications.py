@@ -73,12 +73,13 @@ def _message_body(player: Player, opponent: Player, table: Table, match_time: da
 
 def _send_sms(to: str, body: str, cfg: TwilioSettings) -> None:
     client = _get_client()
-    params: dict[str, str] = {"to": to, "body": body}
+    params: dict[str, str] = {"to": _e164_gr(to), "body": body}
     if cfg.TWILIO_MESSAGING_SERVICE_SID:
         params["messaging_service_sid"] = cfg.TWILIO_MESSAGING_SERVICE_SID
     else:
         params["from_"] = cfg.TWILIO_FROM_NUMBER  # type: ignore[assignment]
     params["status_callback"] = f"{cfg.BASE_URL.rstrip('/')}/twilio/status"
+    params.pop("status_callback", None)  # FEEDBACK WE NEED TO PUBLISH URL TO INORDER TO RECEIVE STATUS UPDATES
     try:
         client.messages.create(**params)
     except TwilioException as exc:  # pragma: no cover - network
@@ -96,3 +97,14 @@ def notify_players(table: Table, assignment: Assignment, players: Iterable[Playe
         _send_sms(player.phone_number, body, cfg)
 
     return NotificationResult(success=True, timestamp=timestamp)
+
+def _e164_gr(n: str) -> str:
+    digits = "".join(ch for ch in n if ch.isdigit() or ch == "+")
+    if digits.startswith("0030"):
+        digits = "+" + digits[2:]
+    if digits.startswith("30"):
+        digits = "+" + digits
+    if not digits.startswith("+"):
+        digits = "+30" + digits
+    return digits
+
