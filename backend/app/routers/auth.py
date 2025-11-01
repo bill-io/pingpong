@@ -22,4 +22,8 @@ def login(payload: schemas.AgentLoginRequest, db: Session = Depends(get_db)):
         )
 
     token = secrets.token_urlsafe(32)
+    agent.api_token = token
+    db.commit()
+    db.refresh(agent)
+
     return schemas.AgentLoginResponse(agent=agent, token=token)
