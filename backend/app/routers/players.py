@@ -2,9 +2,10 @@ from typing import List, Optional, Sequence, Tuple
 import csv
 import io
 import math
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Path
+from pathlib import Path as FsPath
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Path as ParamPath
+
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -28,7 +29,7 @@ PHONE_HEADERS = {"phone_number", "phonenumber", "phone", "mobile", "phone_no", "
 
 
 def _detect_file_format(file: UploadFile) -> str:
-    suffix = Path(file.filename or "").suffix.lower()
+    suffix = FsPath(file.filename or "").suffix.lower()
     content_type = (file.content_type or "").lower()
 
     if suffix in SUPPORTED_CSV_SUFFIXES or "csv" in content_type or content_type.startswith("text/"):
@@ -441,8 +442,8 @@ def delete_all_players(
 #------------Get Player State----------------  
 @router.get("/state/{event_id}/{player_id}", response_model=schemas.PlayerStateOut)
 def player_state_by_id(
-    event_id: int = Path(...),
-    player_id: int = Path(...),
+    event_id: int = ParamPath(...),
+    player_id: int = ParamPath(...),
     db: Session = Depends(get_db),
     current_agent: models.Agent = Depends(get_current_agent),
 ):
@@ -458,8 +459,8 @@ def player_state_by_id(
 
 @router.get("/state/by-phone/{event_id}/{phone_number}", response_model=schemas.PlayerStateOut)
 def player_state_by_phone(
-    event_id: int = Path(...),
-    phone_number: str = Path(...),
+    event_id: int = ParamPath(...),
+    player_id: int = ParamPath(...),
     db: Session = Depends(get_db),
     current_agent: models.Agent = Depends(get_current_agent),
 ):

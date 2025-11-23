@@ -64,10 +64,10 @@ def _format_match_time(dt: datetime | None) -> str:
 def _message_body(player: Player, opponent: Player, table: Table, match_time: datetime | None, event_name: str | None) -> str:
     label = _format_table_label(table)
     time_str = _format_match_time(match_time)
-    intro = f"PingPong match update for {event_name}" if event_name else "PingPong match update"
+    intro = f"Ενημέρωση αγώνα για : {event_name}" if event_name else "Ενημέρωση αγώνα PingPong"
     return (
-        f"{intro}: {player.full_name}, you are playing {opponent.full_name} at {label} at {time_str}. "
-        "Please head to your table."
+        f"{intro}: {player.full_name}, παίζεις με τον/την {opponent.full_name} στο {label} "
+        "Παρακαλώ κατευθύνσου προς το τραπέζι σου."
     )
 
 
