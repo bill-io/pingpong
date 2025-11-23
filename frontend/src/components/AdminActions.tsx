@@ -1,10 +1,10 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useCreateEvent, useDeleteEvent } from "@/hooks/useEvents";
 import { useCreateTable, useDeleteTable, useSeedTables } from "@/hooks/useTables";
-import { useCreatePlayer, useDeletePlayer, usePlayers } from "@/hooks/usePlayers";
+import { useCreatePlayer, useDeletePlayer, useImportPlayers, usePlayers } from "@/hooks/usePlayers";
 import { useRegisterPlayer } from "@/hooks/useRegistrations";
 import { useEventStore } from "@/store/eventStore";
-import type { Registration, TableEntity } from "@/types";
+import type { BulkImportResult, Registration, TableEntity } from "@/types";
 
 function useFeedback() {
   const [message, setMessage] = useState<string | null>(null);
@@ -37,6 +37,7 @@ export default function AdminActions({
   const seedTables = useSeedTables(activeEvent?.id);
   const createPlayer = useCreatePlayer();
   const deletePlayer = useDeletePlayer();
+  const importPlayers = useImportPlayers();
   const registerPlayer = useRegisterPlayer(activeEvent?.id);
 
   const feedback = useFeedback();
@@ -58,6 +59,9 @@ export default function AdminActions({
   const [playerToDelete, setPlayerToDelete] = useState("");
   const [playerToRegister, setPlayerToRegister] = useState("");
   const [bulkSelection, setBulkSelection] = useState<string[]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importSummary, setImportSummary] = useState<BulkImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!tableToDelete && tables?.length) {
@@ -105,6 +109,9 @@ export default function AdminActions({
     [players, registeredPlayerIds]
   );
   const isEventSelected = Boolean(activeEvent?.id);
+  const importErrors = importSummary?.errors ?? [];
+  const visibleImportErrors = importErrors.slice(0, 5);
+  const hiddenImportErrors = Math.max(importErrors.length - visibleImportErrors.length, 0);
 
   useEffect(() => {
     if (!playerToRegister && unregisteredPlayers.length) {
@@ -389,6 +396,43 @@ export default function AdminActions({
     }
   };
 
+  const handleImportFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setImportFileName(file ? file.name : "");
+    setImportSummary(null);
+  };
+
+  const handleImportPlayers = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    feedback.reset();
+    setImportSummary(null);
+
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) {
+      feedback.show("error", "Choose a CSV or Excel file to import.");
+      return;
+    }
+
+    try {
+      const result = await importPlayers.mutateAsync({ file });
+      setImportSummary(result);
+      const hasErrors = result.errors.length > 0;
+      const summaryText = `Processed ${result.total_rows} row${result.total_rows === 1 ? "" : "s"}: ${result.created} added, ${result.skipped} skipped.`;
+      const feedbackVariant = hasErrors && result.created === 0 ? "error" : "success";
+      const feedbackMessage = hasErrors
+        ? `${summaryText} Some rows were skipped. Review the import notes below.`
+        : summaryText;
+      feedback.show(feedbackVariant, feedbackMessage);
+      setImportFileName("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to import players";
+      feedback.show("error", message);
+    }
+  };
+
   const inputClasses =
     "w-full rounded-xl border border-slate-800/70 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none";
   const buttonPrimary =
@@ -616,6 +660,68 @@ export default function AdminActions({
           >
             {deletePlayer.isPending ? "Deleting…" : "Delete player"}
           </button>
+        </form>
+
+        <form
+          onSubmit={handleImportPlayers}
+          className="space-y-3 rounded-2xl border border-sky-400/30 bg-slate-950/60 p-4 lg:col-span-2"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h3 className={sectionTitle}>Bulk import players</h3>
+              <p className="text-xs text-slate-400">
+                Upload a CSV or Excel file where the first column is the full name and the second is the phone number.
+              </p>
+            </div>
+            {importFileName && (
+              <span className="rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-100">
+                {importFileName}
+              </span>
+            )}
+          </div>
+
+          <label className="block">
+            <span className="text-xs text-slate-400">Roster file</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xlsm"
+              className="mt-1 block w-full cursor-pointer rounded-xl border border-slate-800/70 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-sky-500/20 file:px-3 file:py-1 file:text-sky-100 file:font-medium hover:border-sky-400/40"
+              onChange={handleImportFileChange}
+            />
+          </label>
+          <p className="text-xs text-slate-500">
+            Accepted formats: CSV or Excel (.xlsx). Keep column one as the player's full name and column two as the phone number.
+          </p>
+
+          <button type="submit" className={buttonPrimary} disabled={importPlayers.isPending}>
+            {importPlayers.isPending ? "Importing…" : "Import players"}
+          </button>
+
+          {importSummary && (
+            <div
+              className={`rounded-2xl border px-3 py-3 text-xs ${
+                importErrors.length
+                  ? "border-amber-300/40 bg-amber-500/10 text-amber-100"
+                  : "border-emerald-300/40 bg-emerald-500/10 text-emerald-100"
+              }`}
+            >
+              <p className="font-medium">
+                Processed {importSummary.total_rows} row{importSummary.total_rows === 1 ? "" : "s"} • {importSummary.created} added • {" "}
+                {importSummary.skipped} skipped
+              </p>
+              {importErrors.length ? (
+                <div className="mt-2 space-y-1 text-amber-100">
+                  {visibleImportErrors.map((error, index) => (
+                    <p key={index}>• {error}</p>
+                  ))}
+                  {hiddenImportErrors > 0 && <p>…and {hiddenImportErrors} more issue{hiddenImportErrors === 1 ? "" : "s"}.</p>}
+                </div>
+              ) : (
+                <p className="mt-1 text-[11px] text-emerald-100/80">All players were imported successfully.</p>
+              )}
+            </div>
+          )}
         </form>
       </div>
 

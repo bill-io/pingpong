@@ -54,3 +54,10 @@ export type AgentLoginResponse = {
   agent: Agent;
   token: string;
 };
+
+export type BulkImportResult = {
+  total_rows: number;
+  created: number;
+  skipped: number;
+  errors: string[];
+};

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import type { Player } from "@/types";
+import type { BulkImportResult, Player } from "@/types";
 
 function normalizePlayer(p: any): Player {
   const state = (p.state ?? p.status ?? "").toString().toLowerCase();
@@ -44,6 +44,20 @@ export function useDeletePlayer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (playerId: Player["id"]) => api.delete<void>(`/players/id/${playerId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["players"] });
+    }
+  });
+}
+
+export function useImportPlayers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ file }: { file: File }): Promise<BulkImportResult> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return api.upload<BulkImportResult>("/players/import", formData);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["players"] });
     }

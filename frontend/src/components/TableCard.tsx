@@ -69,6 +69,26 @@ export default function TableCard({ table }: { table: TableEntity }) {
     : "";
 
   const label = table.label ?? (table.position != null ? `Table ${table.position}` : `Table ${table.id}`);
+  const containerTone = isFree
+    ? "border-emerald-400/35 bg-emerald-950/70 shadow-[0_30px_90px_-50px_rgba(16,185,129,0.65)]"
+    : "border-rose-400/40 bg-rose-950/70 shadow-[0_30px_90px_-50px_rgba(244,63,94,0.6)]";
+  const statusTone = isFree
+    ? "border-emerald-300/70 bg-emerald-500/20 text-emerald-100"
+    : "border-rose-300/70 bg-rose-500/20 text-rose-100";
+  const matchPanelTone = isFree
+    ? "rounded-xl border border-emerald-400/25 bg-emerald-950/50 px-3 py-2"
+    : "rounded-xl border border-rose-400/25 bg-rose-950/50 px-3 py-2";
+  const emptyPanelTone = isFree
+    ? "rounded-xl border border-dashed border-emerald-400/40 px-3 py-4 text-center text-xs text-emerald-100/80"
+    : "rounded-xl border border-dashed border-rose-400/40 px-3 py-4 text-center text-xs text-rose-100/80";
+  const timerPanelTone = isFree
+    ? "rounded-xl border border-emerald-400/25 bg-emerald-900/40 px-3 py-3 text-xs"
+    : "rounded-xl border border-rose-400/25 bg-rose-900/40 px-3 py-3 text-xs";
+  const accentDot = isFree ? "bg-emerald-300" : "bg-rose-300";
+  const assignButtonEnabled = isFree
+    ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-100 hover:border-emerald-300"
+    : "border-sky-400/60 bg-sky-500/20 text-white hover:border-sky-300";
+  const freeButtonEnabled = "border-rose-400/60 bg-rose-500/20 text-rose-100 hover:border-rose-300";
 
   const onAssign = async () => {
     if (!canAssign) return;
@@ -120,40 +140,36 @@ export default function TableCard({ table }: { table: TableEntity }) {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 rounded-2xl border border-slate-800/70 bg-slate-950/70 p-4 text-slate-200 shadow-[0_20px_45px_-30px_rgba(56,189,248,0.45)]">
+    <div
+      className={`flex h-full flex-col gap-4 rounded-2xl border p-5 text-slate-100 transition-shadow ${containerTone}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-slate-400">Table</p>
+          <p className="text-xs uppercase tracking-wide text-slate-300">Table</p>
           <h3 className="text-lg font-semibold text-white">{label}</h3>
         </div>
         <span
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-            isFree
-              ? "border-emerald-300/50 bg-emerald-400/20 text-emerald-100"
-              : "border-rose-300/50 bg-rose-400/20 text-rose-100"
-          }`}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone}`}
         >
           {isFree ? "Free" : "Occupied"}
         </span>
       </div>
 
       <div className="space-y-2 text-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Current match</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Current match</p>
         {players.length ? (
-          <div className="rounded-xl border border-slate-800/70 bg-slate-900/70 px-3 py-2">
+          <div className={matchPanelTone}>
             <ul className="space-y-1 text-slate-200">
               {players.map((p) => (
                 <li key={p.id} className="flex items-center gap-2">
-                  <span className="inline-block h-2 w-2 rounded-full bg-sky-400" aria-hidden />
+                  <span className={`inline-block h-2 w-2 rounded-full ${accentDot}`} aria-hidden />
                   <span className="truncate">{p.full_name}</span>
                 </li>
               ))}
             </ul>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-700/60 px-3 py-4 text-center text-xs text-slate-400">
-            No players assigned.
-          </div>
+          <div className={emptyPanelTone}>No players assigned.</div>
         )}
       </div>
 
@@ -163,9 +179,9 @@ export default function TableCard({ table }: { table: TableEntity }) {
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-800/60 bg-slate-900/60 px-3 py-3 text-xs">
+      <div className={timerPanelTone}>
         <div className="flex items-center justify-between">
-          <span className="font-semibold uppercase tracking-wide text-slate-400">Timer</span>
+          <span className="font-semibold uppercase tracking-wide text-slate-300">Timer</span>
           <span className="text-lg font-semibold text-white">{elapsedLabel}</span>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-400 sm:text-xs">
@@ -194,7 +210,7 @@ export default function TableCard({ table }: { table: TableEntity }) {
           onClick={onAssign}
           className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
             canAssign && !busy
-              ? "border-sky-400/60 bg-sky-500/20 text-white hover:border-sky-300"
+              ? assignButtonEnabled
               : "cursor-not-allowed border-slate-800/60 bg-slate-900/60 text-slate-500"
           }`}
           title={assignTooltip}
@@ -206,7 +222,7 @@ export default function TableCard({ table }: { table: TableEntity }) {
           onClick={onFree}
           className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
             canFree && !busy
-              ? "border-slate-200/40 bg-slate-800/70 text-slate-100 hover:border-slate-100/60"
+              ? freeButtonEnabled
               : "cursor-not-allowed border-slate-800/60 bg-slate-900/60 text-slate-500"
           }`}
           title={freeTooltip}

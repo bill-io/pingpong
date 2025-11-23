@@ -1,17 +1,6 @@
 import { useAuthStore } from "@/store/authStore";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const { token, logout } = useAuthStore.getState();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`/api${path}`, {
-    headers,
-    ...init
-  });
-
+async function parseResponse<T>(res: Response, logout: () => void): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     if (res.status === 401) {
@@ -36,6 +25,37 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { token, logout } = useAuthStore.getState();
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`/api${path}`, {
+    headers,
+    ...init
+  });
+
+  return parseResponse<T>(res, logout);
+}
+
+async function upload<T>(path: string, formData: FormData): Promise<T> {
+  const { token, logout } = useAuthStore.getState();
+  const headers: HeadersInit = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    headers,
+    body: formData
+  });
+
+  return parseResponse<T>(res, logout);
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
@@ -47,5 +67,6 @@ export const api = {
     request<T>(path, {
       method: "DELETE",
       body: body ? JSON.stringify(body) : undefined
-    })
+    }),
+  upload: <T>(path: string, formData: FormData) => upload<T>(path, formData)
 };

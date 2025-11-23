@@ -143,7 +143,7 @@ export default function MainPage() {
     }
 
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {tables.map((table) => (
           <TableCard key={table.id} table={table} />
         ))}
@@ -334,9 +334,31 @@ export default function MainPage() {
               </div>
             </section>
 
-            <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,1.1fr)] lg:items-start">
               <div className="space-y-6">
-                <div className="rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
+                <div className="rounded-3xl border border-sky-500/30 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 shadow-[0_35px_90px_-45px_rgba(56,189,248,0.7)]">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-white">Tables</h3>
+                      <p className="text-sm text-slate-300">
+                        See every match at a glance and manage assignments in real time.
+                      </p>
+                    </div>
+                    <div className="rounded-full border border-sky-400/50 bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-100 shadow-[0_10px_30px_-20px_rgba(56,189,248,0.65)]">
+                      {tablesLoading ? "Updating…" : `${occupiedTables} occupied • ${freeTables} free`}
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    {renderTables(
+                      "No tables configured for this event yet. Return to the dashboard to add or seed new tables."
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6 lg:sticky lg:top-8">
+                <div className="rounded-3xl border border-sky-400/25 bg-slate-950/75 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.55)]">
                   <EventPlayers
                     eventId={activeEvent?.id}
                     eventName={activeEvent?.name}
@@ -344,26 +366,6 @@ export default function MainPage() {
                     isLoading={registrationsQuery.isLoading}
                     error={registrationsQuery.error}
                   />
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-3xl border border-sky-400/20 bg-slate-950/70 p-6 shadow-[0_25px_70px_-40px_rgba(56,189,248,0.65)]">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white">Tables</h3>
-                      <p className="text-sm text-slate-400">Assign players or free tables instantly.</p>
-                    </div>
-                    <div className="rounded-full border border-sky-400/40 bg-slate-900/70 px-3 py-1 text-xs font-semibold text-sky-200">
-                      {tablesLoading ? "Updating…" : `${occupiedTables} occupied • ${freeTables} free`}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-4">
-                    {renderTables(
-                      "No tables configured for this event yet. Return to the dashboard to add or seed new tables."
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
